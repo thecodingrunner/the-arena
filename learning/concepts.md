@@ -24,3 +24,10 @@ Record durable understanding, not every definition encountered.
 - **Example:** Effective power is derived from definition + current holder, so store neither the result nor the function. Compute it in the engine at fight time. 
 - **Related concepts:** 
 
+
+## 2026-10-16: Defence in depth
+
+- **Learner's explanation:** The prompt is a suggestion, and the engine is enforcement.  
+- **Corrected understanding:**
+- **Example:** Models make mistakes, and a personality prompt can actively try to push them into illegal moves.
+- **Related concepts:** 

@@ -34,6 +34,7 @@ Alliances live on GameState, not Tribute: single source of truth.
 GameState
     tributes: Tribute[]
     alliances: Alliance[] // e.g. { id, memberIds: [3, 7] }
+    zones: Zone[]
 
 Alliances
 
@@ -47,8 +48,10 @@ type Action =
     | { type: "rest" }
     | { type: "hunt", targetId: string }
     | { type: "betray", allyId: string }
+    | { type: "propose_alliance", tributeId: string }
     | { type: "move_to", zoneId: string }
     | { type: "use_item", itemId: string }
+    | { type: "accept_alliance", proposerId: string }
 ```
 
 forage

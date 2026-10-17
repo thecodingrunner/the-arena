@@ -3,3 +3,4 @@
 4. The engine is deterministic: same seed + same actions gives the same outputs. No Math.random() in the sim.
 5. Store each round's chosed actions (inputs), not just the event log (outputs).
 6. The engine owns the truth, and the LLM only reacts to it. 
+7. The engine builds each tribute's perception. Tributes only see what they could possibly know. 
