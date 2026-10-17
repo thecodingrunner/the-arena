@@ -15,7 +15,7 @@ This project is being built with **Manware's AI Learning Toolkit** (see `CLAUDE.
 
 ## About me
 
-- Junior frontend developer, ~2.5 years experience.
+- Junior frontend developer, ~1.5 years experience (~1.5 years React and Javascript based, ~1 year wordpress/php).
 - Strong: React, Next.js, TypeScript, Tailwind. Some Three.js experience.
 - New to: game simulation design, LLM agent loops, real-time multiplayer, 3D character morphing.
 - Self-host on a Hetzner VPS with Coolify, Docker and Nginx.
