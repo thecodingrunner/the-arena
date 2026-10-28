@@ -1,0 +1,10 @@
+node_modules
+package-lock.json
+.next
+dist
+coverage
+apps/web
+.claude
+learning
+docs
+*.md
