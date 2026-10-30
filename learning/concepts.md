@@ -31,3 +31,21 @@ Record durable understanding, not every definition encountered.
 - **Corrected understanding:**
 - **Example:** Models make mistakes, and a personality prompt can actively try to push them into illegal moves.
 - **Related concepts:** 
+
+## 2026-10-16: Idempotency
+- **Learner's explanation:** when doing an event twice has the same effect as doing it once
+- **Corrected understanding:** 
+- **Example:** When deciding which fields to add to the change in hunger and health events, it was decided that adding both the current state and the change is beneficial, so that the same difference cannot be applied twice and the current state is taken as the source of truth (incase a client disconnects), but the change can still be used for commentary. 
+- **Related concepts:** HTTP PUT is safe to retry and a naive "add 1" POST isn't
+
+## 2026-10-16: Idempotency key
+- **Learner's explanation:** a key that can be used to prevent the same event from being carried out twice
+- **Corrected understanding:** 
+- **Example:** the giftId on the the SponsorGift Action acts as an idempotency key, created in the client e.g. crypto.randomUUID(), and server checks its own record of processed gift ids.
+- **Related concepts:** Payment APIs like Stripe use the same pattern to prevent double charges
+
+## 2026-10-16: a factory vs the thing it makes
+- **Learner's explanation:** a factory creates a generator with fresh state, so calling the factory again will create a new generator, rather than running the already one
+- **Corrected understanding:** 
+- **Example:** mulberry32 is a factory, and calling it creates a generator with a fresh state. It should run once, in createRng. The old seed ran the factory on every call, so each next() built a brand-new generator, and returned that generator, uncalled.
+- **Related concepts:** 
