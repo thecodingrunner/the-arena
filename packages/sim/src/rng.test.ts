@@ -38,7 +38,15 @@ describe("createRng", () => {
   });
 
   test("seed of NaN throws an error", () => {
-    expect(() => createRng(NaN)).toThrow();
+    expect(() => createRng(NaN)).toThrow("The seed needs to be a valid number");
+  });
+
+  test("seed of Infinity throws an error", () => {
+    expect(() => createRng(Infinity)).toThrow("The seed needs to be a valid number");
+  });
+
+  test("seed of -Infinity throws an error", () => {
+    expect(() => createRng(-Infinity)).toThrow("The seed needs to be a valid number");
   });
 });
 
@@ -69,7 +77,7 @@ describe("rng.int", () => {
   });
 
   test("when min is bigger than max, an error is thrown", () => {
-    expect(() => createRng(0).int(2, 1)).toThrow();
+    expect(() => createRng(0).int(2, 1)).toThrow("min needs to be less than or equal to max");
   });
 
   test("when min is equal to max, the same number is returned every time", () => {
@@ -79,13 +87,13 @@ describe("rng.int", () => {
   });
 
   test("when min or max is decimal, an error is thrown", () => {
-    expect(() => createRng(0).int(1.5, 2)).toThrow();
-    expect(() => createRng(0).int(1, 2.5)).toThrow();
+    expect(() => createRng(0).int(1.5, 2)).toThrow("min and max need to be whole numbers");
+    expect(() => createRng(0).int(1, 2.5)).toThrow("min and max need to be whole numbers");
   });
 
   test("when min or max is NaN, an error is thrown", () => {
-    expect(() => createRng(0).int(NaN, 2)).toThrow();
-    expect(() => createRng(0).int(1, NaN)).toThrow();
+    expect(() => createRng(0).int(NaN, 2)).toThrow("min and max need to be whole numbers");
+    expect(() => createRng(0).int(1, NaN)).toThrow("min and max need to be whole numbers");
   });
 });
 
@@ -129,7 +137,7 @@ describe("rng.chance", () => {
   });
 
   test("rng.chance(NaN) throws an error", () => {
-    expect(() => createRng(0).chance(NaN)).toThrow();
+    expect(() => createRng(0).chance(NaN)).toThrow("p needs to be a valid number");
   });
 });
 
@@ -151,6 +159,36 @@ describe("rng.pick", () => {
   });
 });
 
+describe("rng.shuffle", () => {
+  test("the input array from rng.shuffle(array) remains unchanged", () => {
+    const arr = [1, 2, 3];
+    createRng(0).shuffle(arr);
+    expect(arr).toEqual([1, 2, 3]);
+  });
+
+  test("the returned array is different from the input array", () => {
+    const arr = [1, 2, 3];
+    const shuffled = createRng(0).shuffle(arr);
+    expect(arr).not.toBe(shuffled);
+  });
+
+  test("the returned array contains the same elements as the input array", () => {
+    const arr = [1, 2, 3];
+    const shuffled = createRng(0).shuffle(arr);
+    expect([...shuffled].sort()).toEqual([...arr].sort());
+  });
+
+  test("every ordering of the input array is reachable over 10,000 calls", () => {
+    const arr = [1, 2, 3];
+    const set = new Set(takeShuffle(createRng(0), 10000, arr));
+    expect(set.size).toEqual(6);
+  });
+
+  test("rng.shuffle([]) returns []", () => {
+    expect(createRng(0).shuffle([])).toEqual([]);
+  });
+});
+
 const take = (rng: Rng, n: number) =>
   Array.from({ length: n }, () => rng.next());
 
@@ -162,6 +200,9 @@ const takeChance = (rng: Rng, n: number, p: number) =>
 
 const takePick = (rng: Rng, n: number, arr: number[]) =>
   Array.from({ length: n }, () => rng.pick(arr));
+
+const takeShuffle = (rng: Rng, n: number, arr: number[]) =>
+  Array.from({ length: n }, () => rng.shuffle(arr).join(","));
 
 function expectWellBehaved(rng: Rng) {
   // Check that the sequence varies call to call

@@ -49,3 +49,9 @@ Record durable understanding, not every definition encountered.
 - **Corrected understanding:** 
 - **Example:** mulberry32 is a factory, and calling it creates a generator with a fresh state. It should run once, in createRng. The old seed ran the factory on every call, so each next() built a brand-new generator, and returned that generator, uncalled.
 - **Related concepts:** 
+
+## 2026-11-02: arguments are evaluated before the function is called
+- **Learner's explanation:** arguments must be evaluated first before a function is called, otherwise the check will be dead, and the function may run on invalid arguments
+- **Corrected understanding:** passed the generator, and ran the int function after the check within the pick function
+- **Example:** was passing the int function to get the index, before checking that the length of the array was not zero
+- **Related concepts:** 
