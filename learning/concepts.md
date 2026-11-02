@@ -55,3 +55,15 @@ Record durable understanding, not every definition encountered.
 - **Corrected understanding:** passed the generator, and ran the int function after the check within the pick function
 - **Example:** was passing the int function to get the index, before checking that the length of the array was not zero
 - **Related concepts:** 
+
+## 2026-11-02: make invalid states unrepresentable
+- **Learner's explanation:** splitting types so that only the types with valid states in that moment are used
+- **Corrected understanding:** assumed that all values would need to be set on the Tribute type, but the TributeState data can be added later after setup
+- **Example:** using TributeConfig and TributeState, so that only the valid states are defined as types when necessary
+- **Related concepts:** 
+
+## 2026-11-02: definition vs instance, again
+- **Learner's explanation:** an id for a definition can be set, and later used to create an instance. 
+- **Corrected understanding:** assumed that instances would have to be set, rather than just using an id to represent a definition
+- **Example:** a weaponId or arenaId can be set initially to the GameConfig, without adding the actual instances
+- **Related concepts:** 

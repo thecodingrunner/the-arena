@@ -18,27 +18,29 @@ agent memory
 Inventory (initial weapon, picked up/stolen weapons, Sponsor items (Ration Pack, Water Flask, Medkit, Antidote, Arrows, Night goggles))
 
 ```ts
-type TributeBase = {
+type TributeConfig = {
     // Fixed
     tributeId: TributeId;
     stats: Stats;
     name: string;
     origin: District;
     personality: string;
-    // Changes
+    startingWeaponDefId: string;
+    owner: PlayerId | null; // null = AI-controlled
+} 
+
+type TributeState = {
     hp: number;
     hunger: number;
-    position: zoneId;
+    position: ZoneId;
     alive: boolean;
     memory: string[];
     inventory: InventoryItem[];
-} 
+}
 
 type InventoryItem = WeaponInstance | SponsorItemInstance;
 
-type Tribute = TributeBase & {
-    owner: PlayerId | null; // null = AI-controlled
-};
+type Tribute = TributeConfig & TributeState;
 
 type District = "Saltworks" | "Glassmouth" | "Blackfenn" | "The Quaries" | "Hollow Pines";
 
@@ -56,10 +58,19 @@ type Stats = {
 
 Alliances live on GameState, not Tribute: single source of truth.
 
-GameState
-    tributes: Tribute[]
-    alliances: Alliance[] // e.g. { id, memberIds: [3, 7] }
-    zones: Zone[]
+```ts
+type GameState = {
+    tributes: Tribute[];
+    alliances: Alliance[]; // e.g. { id, memberIds: [3, 7] }
+    zones: Zone[];
+    matchId: MatchId;
+    seq: number;
+    round: number;
+    rngState: number;
+    nextItemId: string;
+    arenaId: ArenaId;
+}
+```
 
 Alliances
 
@@ -70,6 +81,8 @@ Alliances
 type PlayerId = string;
 type TributeId = string;
 type ZoneId = string;
+type MatchId = string;
+type ArenaId = string;
 
 type Action = 
     | { type: "forage" }
@@ -291,4 +304,17 @@ type SponsorItemInstance = {
     type: string; // itemDefinitionId
     itemId: string; 
 }
+```
+
+## MatchConfig
+
+Lives in: shared
+
+```ts
+type MatchConfig = { 
+    matchId: MatchId, 
+    seed: number, 
+    arenaId: ArenaId, 
+    tributes: TributeConfig[]
+    }
 ```
