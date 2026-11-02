@@ -40,3 +40,5 @@ REAL MODEL:
 MISSED SIGNAL: 
 ROOT CONCEPT: 
 PREVENTION: Whenever something has state, ask: where is it created, and how many times does that line run?
+
+## 2026-11-02: Returned a snapshot instead of a live reading (state / getState() vs getState)
