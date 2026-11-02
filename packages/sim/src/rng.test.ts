@@ -21,6 +21,14 @@ describe("createRng", () => {
     ]);
   });
 
+  test("the value returned after 6000000 calls is 0.1574329542927444 (matches the reference mulberry32)", () => {
+    const rng = createRng(42);
+    for (let i = 0; i < 6000000; i++) {
+      rng.next();
+    }
+    expect(rng.next()).toBe(0.1574329542927444);
+  });
+
   test("different seed produces different sequence", () => {
     expect(take(createRng(1), 10)).not.toEqual(take(createRng(2), 10));
   });
@@ -42,11 +50,15 @@ describe("createRng", () => {
   });
 
   test("seed of Infinity throws an error", () => {
-    expect(() => createRng(Infinity)).toThrow("The seed needs to be a valid number");
+    expect(() => createRng(Infinity)).toThrow(
+      "The seed needs to be a valid number",
+    );
   });
 
   test("seed of -Infinity throws an error", () => {
-    expect(() => createRng(-Infinity)).toThrow("The seed needs to be a valid number");
+    expect(() => createRng(-Infinity)).toThrow(
+      "The seed needs to be a valid number",
+    );
   });
 });
 
@@ -77,7 +89,9 @@ describe("rng.int", () => {
   });
 
   test("when min is bigger than max, an error is thrown", () => {
-    expect(() => createRng(0).int(2, 1)).toThrow("min needs to be less than or equal to max");
+    expect(() => createRng(0).int(2, 1)).toThrow(
+      "min needs to be less than or equal to max",
+    );
   });
 
   test("when min is equal to max, the same number is returned every time", () => {
@@ -87,13 +101,21 @@ describe("rng.int", () => {
   });
 
   test("when min or max is decimal, an error is thrown", () => {
-    expect(() => createRng(0).int(1.5, 2)).toThrow("min and max need to be whole numbers");
-    expect(() => createRng(0).int(1, 2.5)).toThrow("min and max need to be whole numbers");
+    expect(() => createRng(0).int(1.5, 2)).toThrow(
+      "min and max need to be whole numbers",
+    );
+    expect(() => createRng(0).int(1, 2.5)).toThrow(
+      "min and max need to be whole numbers",
+    );
   });
 
   test("when min or max is NaN, an error is thrown", () => {
-    expect(() => createRng(0).int(NaN, 2)).toThrow("min and max need to be whole numbers");
-    expect(() => createRng(0).int(1, NaN)).toThrow("min and max need to be whole numbers");
+    expect(() => createRng(0).int(NaN, 2)).toThrow(
+      "min and max need to be whole numbers",
+    );
+    expect(() => createRng(0).int(1, NaN)).toThrow(
+      "min and max need to be whole numbers",
+    );
   });
 });
 
@@ -137,7 +159,9 @@ describe("rng.chance", () => {
   });
 
   test("rng.chance(NaN) throws an error", () => {
-    expect(() => createRng(0).chance(NaN)).toThrow("p needs to be a valid number");
+    expect(() => createRng(0).chance(NaN)).toThrow(
+      "p needs to be a valid number",
+    );
   });
 });
 
