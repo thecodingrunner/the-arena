@@ -66,7 +66,7 @@ describe("rng.int", () => {
     const arr = takeInt(createRng(0), 1000, -2, 2);
     const set = new Set(arr);
     expect(set).toEqual(new Set([-2, -1, 0, 1, 2]));
-  })
+  });
 
   test("when min is bigger than max, an error is thrown", () => {
     expect(() => createRng(0).int(2, 1)).toThrow();
@@ -76,7 +76,7 @@ describe("rng.int", () => {
     const arr = takeInt(createRng(0), 1000, 2, 2);
     const set = new Set(arr);
     expect(set).toEqual(new Set([2]));
-  })
+  });
 
   test("when min or max is decimal, an error is thrown", () => {
     expect(() => createRng(0).int(1.5, 2)).toThrow();
@@ -86,19 +86,70 @@ describe("rng.int", () => {
   test("when min or max is NaN, an error is thrown", () => {
     expect(() => createRng(0).int(NaN, 2)).toThrow();
     expect(() => createRng(0).int(1, NaN)).toThrow();
-  })
+  });
+});
+
+describe("rng.chance", () => {
+  test("rng.chance(0.35) returns true 35% of the time", () => {
+    const proportion = takeChance(createRng(0), 10000, 0.35).filter(
+      (val) => val,
+    ).length / 10000;
+    expect(proportion).toBeGreaterThanOrEqual(0.33);
+    expect(proportion).toBeLessThanOrEqual(0.37);
+  });
+
+  test("rng.chance(0.8) returns true 80% of the time", () => {
+    const proportion = takeChance(createRng(0), 10000, 0.8).filter(
+      (val) => val,
+    ).length / 10000;
+    expect(proportion).toBeGreaterThanOrEqual(0.78);
+    expect(proportion).toBeLessThanOrEqual(0.82);
+  });
+
+  test("rng.chance(0) never returns true", () => {
+    expect(
+      takeChance(createRng(0), 10000, 0).filter((val) => val).length,
+    ).toEqual(0);
+  });
+
+  test("rng.chance(1) always returns true", () => {
+    expect(
+      takeChance(createRng(0), 10000, 1).filter((val) => val).length,
+    ).toEqual(10000);
+  });
+
+  test("rng.chance(-0.5) never returns true (clamping causes it to behave like rng.chance(0))", () => {
+    expect(
+      takeChance(createRng(0), 10000, -0.5).filter((val) => val).length,
+    ).toEqual(0);
+  });
+
+  test("rng.chance(1.5) always returns true (clamping causes it to behave like rng.chance(1))", () => {
+    expect(
+      takeChance(createRng(0), 10000, 1.5).filter((val) => val).length,
+    ).toEqual(10000);
+  });
+
+  test("rng.chance(NaN) throws an error", () => {
+    expect(() => createRng(0).chance(NaN)).toThrow();
+  });
 });
 
 const take = (rng: { next: () => number }, n: number) =>
   Array.from({ length: n }, () => rng.next());
 
-
 const takeInt = (
   rng: { int: (min: number, max: number) => number },
   n: number,
   min: number = 1,
-  max: number = 3
+  max: number = 3,
 ) => Array.from({ length: n }, () => rng.int(min, max));
+
+const takeChance = (
+  rng: { chance: (p: number) => boolean },
+  n: number,
+  p: number,
+) => Array.from({ length: n }, () => rng.chance(p));
 
 function expectWellBehaved(rng: { next: () => number }) {
   // Check that the sequence varies call to call

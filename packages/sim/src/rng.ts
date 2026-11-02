@@ -9,6 +9,7 @@ export function createRng(seed: number) {
   return {
     next: generator,
     int: (min: number, max: number) => int(min, max, generator),
+    chance: (p: number) => chance(p, generator),
   };
 }
 
@@ -28,4 +29,10 @@ function int(min: number, max: number, generator: () => number) {
   if (min > max) throw new Error("min needs to be less than or equal to max");
 
   return Math.floor(generator() * (max - min + 1)) + min;
+}
+
+function chance(p: number, generator: () => number) {
+  if (Number.isNaN(p)) throw new Error("p needs to be a valid number");
+  // The [0, 1) range clamps out-of-range p, and < (not <=) keeps chance(0) impossible
+  return generator() < p;
 }

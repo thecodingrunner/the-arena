@@ -31,3 +31,12 @@ MISSED SIGNAL: The tests failing was the first point I saw the outputs. The outp
 ROOT CONCEPT: The fact that quantifies apply to the set before it, and that the letter and underscores had to be stated explicitly rather than in a negative statement
 PREVENTION:Test a new regex on regex101 against one attack string and one legitimate string before putting it in code
 CATEGORY: Missing domain knowledge
+
+## 2026-10-17: while statements and immutability
+
+BUG: Calling generator incorrectly 
+ORIGINAL MODEL: Was calling a reinstantiation of the generator rather than its function
+REAL MODEL: 
+MISSED SIGNAL: 
+ROOT CONCEPT: 
+PREVENTION: Whenever something has state, ask: where is it created, and how many times does that line run?
