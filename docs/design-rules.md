@@ -4,3 +4,4 @@
 5. Store each round's chosed actions (inputs), not just the event log (outputs).
 6. The engine owns the truth, and the LLM only reacts to it. 
 7. The engine builds each tribute's perception. Tributes only see what they could possibly know. 
+8. When the input means the caller has a bug, crash at the bug, not three steps later.

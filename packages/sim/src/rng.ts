@@ -10,6 +10,7 @@ export function createRng(seed: number) {
     next: generator,
     int: (min: number, max: number) => int(min, max, generator),
     chance: (p: number) => chance(p, generator),
+    pick: <T>(arr: T[]) => pick(arr, generator),
   };
 }
 
@@ -36,3 +37,11 @@ function chance(p: number, generator: () => number) {
   // The [0, 1) range clamps out-of-range p, and < (not <=) keeps chance(0) impossible
   return generator() < p;
 }
+
+function pick<T>(arr: T[], generator: () => number): T {
+  if (arr.length === 0) throw new Error("arr needs to be non-empty");
+  const index = int(0, arr.length - 1, generator);
+  return arr[index] as T; // safe: arr is non-empty and index is in [0, length - 1]
+}
+
+export type Rng = ReturnType<typeof createRng>;

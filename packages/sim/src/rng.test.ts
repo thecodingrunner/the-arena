@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createRng } from "./rng";
+import { createRng, type Rng } from "./rng";
 
 describe("createRng", () => {
   test("the same seed produces the same sequence", () => {
@@ -91,17 +91,15 @@ describe("rng.int", () => {
 
 describe("rng.chance", () => {
   test("rng.chance(0.35) returns true 35% of the time", () => {
-    const proportion = takeChance(createRng(0), 10000, 0.35).filter(
-      (val) => val,
-    ).length / 10000;
+    const proportion =
+      takeChance(createRng(0), 10000, 0.35).filter((val) => val).length / 10000;
     expect(proportion).toBeGreaterThanOrEqual(0.33);
     expect(proportion).toBeLessThanOrEqual(0.37);
   });
 
   test("rng.chance(0.8) returns true 80% of the time", () => {
-    const proportion = takeChance(createRng(0), 10000, 0.8).filter(
-      (val) => val,
-    ).length / 10000;
+    const proportion =
+      takeChance(createRng(0), 10000, 0.8).filter((val) => val).length / 10000;
     expect(proportion).toBeGreaterThanOrEqual(0.78);
     expect(proportion).toBeLessThanOrEqual(0.82);
   });
@@ -135,23 +133,37 @@ describe("rng.chance", () => {
   });
 });
 
-const take = (rng: { next: () => number }, n: number) =>
+describe("rng.pick", () => {
+  test("when 1000 calls are made to rng.pick([1, 2, 3]), all numbers in {1, 2, 3} are returned", () => {
+    const arr = takePick(createRng(0), 1000, [1, 2, 3]);
+    const set = new Set(arr);
+    expect(set).toEqual(new Set([1, 2, 3]));
+  });
+
+  test("rng.pick([]) throws an error", () => {
+    expect(() => createRng(0).pick([])).toThrow("arr needs to be non-empty");
+  });
+
+  test("rng.pick([1]) returns the same value every time", () => {
+    const arr = takePick(createRng(0), 1000, [1]);
+    const set = new Set(arr);
+    expect(set).toEqual(new Set([1]));
+  });
+});
+
+const take = (rng: Rng, n: number) =>
   Array.from({ length: n }, () => rng.next());
 
-const takeInt = (
-  rng: { int: (min: number, max: number) => number },
-  n: number,
-  min: number = 1,
-  max: number = 3,
-) => Array.from({ length: n }, () => rng.int(min, max));
+const takeInt = (rng: Rng, n: number, min: number = 1, max: number = 3) =>
+  Array.from({ length: n }, () => rng.int(min, max));
 
-const takeChance = (
-  rng: { chance: (p: number) => boolean },
-  n: number,
-  p: number,
-) => Array.from({ length: n }, () => rng.chance(p));
+const takeChance = (rng: Rng, n: number, p: number) =>
+  Array.from({ length: n }, () => rng.chance(p));
 
-function expectWellBehaved(rng: { next: () => number }) {
+const takePick = (rng: Rng, n: number, arr: number[]) =>
+  Array.from({ length: n }, () => rng.pick(arr));
+
+function expectWellBehaved(rng: Rng) {
   // Check that the sequence varies call to call
   expectSequenceVaries(rng);
 
@@ -159,13 +171,13 @@ function expectWellBehaved(rng: { next: () => number }) {
   expectSequenceInBounds(rng);
 }
 
-function expectSequenceVaries(rng: { next: () => number }) {
+function expectSequenceVaries(rng: Rng) {
   const arr = take(rng, 10);
   const varies = new Set(arr).size === arr.length;
   expect(varies).toEqual(true);
 }
 
-function expectSequenceInBounds(rng: { next: () => number }) {
+function expectSequenceInBounds(rng: Rng) {
   const arr = take(rng, 10);
   expect(arr.every((val) => val >= 0 && val < 1)).toEqual(true);
 }
