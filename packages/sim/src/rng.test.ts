@@ -42,8 +42,63 @@ describe("createRng", () => {
   });
 });
 
+describe("rng.int", () => {
+  test("rng.int(min, max) returns a whole number", () => {
+    const arr = takeInt(createRng(0), 1000);
+
+    expect(arr.every((val) => Number.isInteger(val))).toEqual(true);
+  });
+
+  test("rng.int(min, max) never returns a value outside [min, max]", () => {
+    const arr = takeInt(createRng(0), 1000);
+
+    expect(Math.max(...arr)).toBeLessThanOrEqual(3);
+    expect(Math.min(...arr)).toBeGreaterThanOrEqual(1);
+  });
+
+  test("when 1000 calls are made to rng.int(1, 3), all numbers in {1, 2, 3} are returned", () => {
+    const arr = takeInt(createRng(0), 1000);
+    const set = new Set(arr);
+    expect(set).toEqual(new Set([1, 2, 3]));
+  });
+
+  test("when rng.int(min, max) contains a negative value (-2, 2), every value from min and max is reachable", () => {
+    const arr = takeInt(createRng(0), 1000, -2, 2);
+    const set = new Set(arr);
+    expect(set).toEqual(new Set([-2, -1, 0, 1, 2]));
+  })
+
+  test("when min is bigger than max, an error is thrown", () => {
+    expect(() => createRng(0).int(2, 1)).toThrow();
+  });
+
+  test("when min is equal to max, the same number is returned every time", () => {
+    const arr = takeInt(createRng(0), 1000, 2, 2);
+    const set = new Set(arr);
+    expect(set).toEqual(new Set([2]));
+  })
+
+  test("when min or max is decimal, an error is thrown", () => {
+    expect(() => createRng(0).int(1.5, 2)).toThrow();
+    expect(() => createRng(0).int(1, 2.5)).toThrow();
+  });
+
+  test("when min or max is NaN, an error is thrown", () => {
+    expect(() => createRng(0).int(NaN, 2)).toThrow();
+    expect(() => createRng(0).int(1, NaN)).toThrow();
+  })
+});
+
 const take = (rng: { next: () => number }, n: number) =>
   Array.from({ length: n }, () => rng.next());
+
+
+const takeInt = (
+  rng: { int: (min: number, max: number) => number },
+  n: number,
+  min: number = 1,
+  max: number = 3
+) => Array.from({ length: n }, () => rng.int(min, max));
 
 function expectWellBehaved(rng: { next: () => number }) {
   // Check that the sequence varies call to call
