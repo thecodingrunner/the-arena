@@ -5,7 +5,7 @@ export function createRng(seed: number) {
 
   const roundedSeed = Math.round(seed);
 
-  const generator = mulberry32(roundedSeed);
+  const {generator, getState} = mulberry32(roundedSeed);
 
   return {
     next: generator,
@@ -13,12 +13,17 @@ export function createRng(seed: number) {
     chance: (p: number) => chance(p, generator),
     pick: <T>(arr: T[]) => pick(arr, generator),
     shuffle: <T>(arr: T[]) => shuffle(arr, generator),
+    getState: getState,
   };
 }
 
 function mulberry32(seed: number) {
   let state = seed | 0;
-  return function () {
+
+  const getState = function () {
+    return state;
+  }
+  const generator = function () {
     state = (state + 0x6d2b79f5) | 0; 
     // Keep state 32-bit (| 0): otherwise the value of state will 
     // pass 2⁵³ (max safe integer, and state + 0x6d2b79f5 silently 
@@ -30,6 +35,7 @@ function mulberry32(seed: number) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+  return { generator, getState };
 }
 
 function int(min: number, max: number, generator: () => number) {

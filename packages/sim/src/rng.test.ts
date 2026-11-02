@@ -29,6 +29,14 @@ describe("createRng", () => {
     expect(rng.next()).toBe(0.1574329542927444);
   });
 
+  test("the value of state is 567894515 after 5 calls of next() for createRng(42)", () => {
+    const rng = createRng(42);
+    for (let i = 0; i < 5; i++) {
+      rng.next();
+    }
+    expect(rng.getState()).toBe(567894515);
+  })
+
   test("different seed produces different sequence", () => {
     expect(take(createRng(1), 10)).not.toEqual(take(createRng(2), 10));
   });
