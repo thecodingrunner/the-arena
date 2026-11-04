@@ -139,9 +139,10 @@ type WeaponDefinition = {
 }
 
 type WeaponInstance = {
-    weaponId: string;
-    weaponType: string; // weaponDefinitionId
+    itemId: string;
+    definitionId: string; // weaponDefinitionId
     ammunition: number;
+    kind: "weapon";
 }
 ```
 
@@ -162,6 +163,17 @@ food
 water
 cover
 hazard_level
+
+```ts
+type Zone = {
+    id: string;
+    name: string;
+    food: number;
+    water: number;
+    cover: number;
+    hazard_level: number;
+}
+```
 
 ## GameEvent
 
@@ -301,8 +313,9 @@ type SponsorItemDefinition = {
 }
 
 type SponsorItemInstance = {
-    type: string; // itemDefinitionId
+    definitionId: string; // itemDefinitionId
     itemId: string; 
+    kind: "sponsorItem";
 }
 ```
 
@@ -311,7 +324,7 @@ type SponsorItemInstance = {
 Lives in: shared
 
 ```ts
-type MatchConfig = { 
+export type MatchConfig = { 
     matchId: MatchId, 
     seed: number, 
     arenaId: ArenaId, 

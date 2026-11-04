@@ -21,3 +21,4 @@
 
 ## Open questions
 The first event of a match could carry a snapshot of the arena, so stored logs stay playable even if you later edit an arena
+The time of day changes visibility, does it count as part of GameState (round -> time of day) or is it derived from round?
