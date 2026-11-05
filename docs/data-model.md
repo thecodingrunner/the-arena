@@ -99,7 +99,7 @@ type SponsorGift = {
     giftId: string, 
     from: PlayerId | null, 
     to: TributeId, 
-    itemDefId: string, 
+    itemDefinitionId: string, 
     appliesInRound: number
 }
 ```
@@ -224,8 +224,8 @@ type TributeDied = EventBase & {
 }
 type DeathCause =
     | { kind: "attack", killerId: TributeId }
-    | { kind: "hunger" },
-    | { kind: "hazard", hazard: keyof Hazards }
+    | { kind: "hunger" }
+    | { kind: "hazard", hazard: string }
 type ZoneFlooded = EventBase & {
     type: "ZoneFlooded";
     zoneId: ZoneId;
@@ -240,21 +240,25 @@ type TributeHealthChanged = EventBase & {
     type: "TributeHealthChanged";
     tributeId: TributeId;
     delta: number;
-    health: number;
+    hp: number;
 }
 type TributeAttacked = EventBase & {
     type: "TributeAttacked";
     attackerId: TributeId;
     victimId: TributeId;
 }
-type ZoneFoodChanged = EventBase & {
-    type: "ZoneFoodChanged";
-    zoneId: ZoneId;
-}
-type ZoneWaterChanged = EventBase & {
-    type: "ZoneWaterChanged";
-    zoneId: ZoneId;
-}
+export type ZoneFoodChanged = EventBase & {
+  type: "ZoneFoodChanged";
+  zoneId: ZoneId;
+  delta: number;
+  food: number;
+};
+export type ZoneWaterChanged = EventBase & {
+  type: "ZoneWaterChanged";
+  zoneId: ZoneId;
+  delta: number;
+  water: number;
+};
 type TributeGainedItem = EventBase & {
     type: "TributeGainedItem";
     tributeId: TributeId;
@@ -264,10 +268,11 @@ type ZoneClosed = EventBase & {
     type: "ZoneClosed";
     zoneId: ZoneId;
 }
-type TributeForagedFood = EventBase & {
-    type: "TributeForagedFood";
-    tributeId: TributeId;
-}
+export type TributeForaged = EventBase & {
+  type: "TributeForaged";
+  tributeId: TributeId;
+  success: boolean;
+};
 type TributeRested = EventBase & {
     type: "TributeRested";
     tributeId: TributeId;
@@ -298,7 +303,7 @@ type TributeReceivedGift = EventBase & {
 }
 
 
-type GameEvent = TributeDied | ZoneFlooded | TributeHungerChanged | TributeHealthChanged | TributeAttacked | ZoneFoodChanged | ZoneWaterChanged | TributeGainedItem | ZoneClosed | TributeForagedFood | TributeRested TributeBetrayedAlliance | TributeUsedItem | TributeChangedZone | TributeReceivedGift;
+type GameEvent = TributeDied | ZoneFlooded | TributeHungerChanged | TributeHealthChanged | TributeAttacked | ZoneFoodChanged | ZoneWaterChanged | TributeGainedItem | ZoneClosed | TributeForagedFood | TributeRested | TributeBetrayedAlliance | TributeUsedItem | TributeChangedZone | TributeReceivedGift;
 ```
 
 Sponsor Item

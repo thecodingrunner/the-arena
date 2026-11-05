@@ -42,3 +42,12 @@ ROOT CONCEPT:
 PREVENTION: Whenever something has state, ask: where is it created, and how many times does that line run?
 
 ## 2026-11-02: Returned a snapshot instead of a live reading (state / getState() vs getState)
+
+## 2026-10-17: arrange, act, assert (don't change arena data)
+
+BUG: was changing the arena data to meet preconditions, but this was leading to failed tests due to the varied starting points of tributes
+ORIGINAL MODEL: 
+REAL MODEL: the test relied on fixture data for its precondition, instead of arranging it
+MISSED SIGNAL: 
+ROOT CONCEPT: 
+PREVENTION: reassigned the food and water values of the location zone within the test
