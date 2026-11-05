@@ -22,3 +22,10 @@ Keep unresolved questions concise. Add a date or context when it helps.
 - **Current hypothesis:** stats never change during play, so it is harmless today. But buffs or injuries could potentially modify stats down the line. 
 - **Evidence to check:**
 - **Status:** unresolved
+
+## 2026-11-05: a tribute who rests every round would survive forever without eating. Change later during tuning?
+
+- **Context:** 
+- **Current hypothesis:** 
+- **Evidence to check:**
+- **Status:** unresolved
