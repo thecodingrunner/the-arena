@@ -1,5 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { filterEvents, findEvent, makeConfig, zoneOf } from "./testFixtures";
+import {
+  anyEventInvolves,
+  filterEvents,
+  findEvent,
+  makeConfig,
+  zoneOf,
+} from "./testFixtures";
 import { createMatch } from "./createMatch";
 import { resolveRound } from "./resolveRound";
 import {
@@ -14,11 +20,129 @@ type RoundActions = Record<TributeId, Action>;
 describe("resolveRound", () => {
   // Order
   // - round increases by 1
+  // - rngState moves on after a round
   // - actions resolve in initiative order (higher stealth+intelligence usually first — test with a large stat gap)
   // - same state + actions + rngState gives identical state and events (determinism)
   // - a tribute killed earlier in the round has its action skipped   ← needs step 5 to trigger; so will be skipped for now
   // - throws when a living tribute has no action
-  test.todo("round increases by 1");
+  test("round increases by 1", () => {
+    const restActions: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    const { state: after } = resolveRound(before, restActions);
+
+    expect(after.round).toBe(before.round + 1);
+  });
+
+  test("rngState moves on after a round", () => {
+    const restActions: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    const { state: after } = resolveRound(before, restActions);
+
+    expect(after.rngState).not.toBe(before.rngState);
+  });
+
+  test("throws when a living tribute has no action", () => {
+    const restActions: RoundActions = {
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    expect(() => resolveRound(before, restActions)).toThrow(
+      "no action for tribute t1",
+    );
+  });
+
+  test("dead tributes don't act (action is skipped)", () => {
+    const restActions: RoundActions = {
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.tributes[0]!.alive = false;
+    const { events } = resolveRound(before, restActions);
+
+    const involves = anyEventInvolves(events, "t1");
+
+    expect(involves).toBe(false);
+  });
+
+  test("initiative order with a big stat gap (tribute with higher stealth+intelligence first)", () => {
+    const forageActions: RoundActions = {
+      t1: { type: "forage" },
+      t2: { type: "forage" },
+      t3: { type: "forage" },
+    };
+
+    for (let i = 0; i < 20; i++) {
+      const before = stateWithHunger(i, 50, 3);
+
+      before.tributes[0]!.stats.stealth = 10;
+      before.tributes[0]!.stats.intelligence = 10;
+      before.tributes[1]!.stats.stealth = 1;
+      before.tributes[1]!.stats.intelligence = 1;
+      before.tributes[2]!.stats.stealth = 1;
+      before.tributes[2]!.stats.intelligence = 1;
+
+      const { events } = resolveRound(before, forageActions);
+
+      const foragedT1 = findEvent(
+        events,
+        "TributeForaged",
+        (e) => e.tributeId === "t1",
+      );
+      const foragedT2 = findEvent(
+        events,
+        "TributeForaged",
+        (e) => e.tributeId === "t2",
+      );
+      const foragedT3 = findEvent(
+        events,
+        "TributeForaged",
+        (e) => e.tributeId === "t3",
+      );
+
+      // tribute t1 will have a minimum initiative score of 21,
+      // and the others will have a maximum score of 7, so t1
+      // should always be first
+      expect(foragedT1!.seq).toBeLessThan(foragedT2!.seq);
+      expect(foragedT1!.seq).toBeLessThan(foragedT3!.seq);
+    }
+  });
+
+  test("same state + actions + rngState gives identical state and events (determinism)", () => {
+    const actions: RoundActions = {
+      t1: { type: "forage" },
+      t2: { type: "forage" },
+      t3: { type: "forage" },
+    };
+
+    const match1 = stateWithHunger(2, 50, 3);
+    const zone1 = zoneOf(match1, 0);
+    zone1.food = 3;
+
+    const match2 = stateWithHunger(2, 50, 3);
+    const zone2 = zoneOf(match2, 0);
+    zone2.food = 3;
+    
+    const { state: after1, events: events1 } = resolveRound(match1, actions);
+    const { state: after2, events: events2 } = resolveRound(match2, actions);
+
+    expect(events1.length).toBeGreaterThan(0);
+    expect(after1).toEqual(after2);
+    expect(events1).toEqual(events2);
+  });
 
   // forage
   // - success with food in zone: food −1, hunger −30, emits TributeForaged{success:true}, ZoneFoodChanged, TributeHungerChanged

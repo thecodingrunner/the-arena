@@ -5,6 +5,7 @@ import type {
   GameState,
   MatchConfig,
   TributeConfig,
+  TributeId,
   Zone,
 } from "@arena/shared";
 
@@ -76,6 +77,16 @@ export function findEvent<T extends GameEvent["type"]>(
   where: (event: EventOfType<T>) => boolean = () => true,
 ): EventOfType<T> | undefined {
   return filterEvents(events, type, where)[0];
+}
+
+export function anyEventInvolves(
+  events: GameEvent[],
+  tributeId: TributeId,
+): boolean {
+  const involves = (e: GameEvent, id: TributeId) =>
+    Object.values(e).includes(id);
+  for (const e of events) if (involves(e, tributeId)) return true;
+  return false;
 }
 
 // All events of a type, typed as that event. Optional filter on their fields.

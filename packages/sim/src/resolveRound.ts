@@ -32,7 +32,6 @@ export function resolveRound(
 ): {
   state: GameState;
   events: GameEvent[];
-  rngState: number;
 } {
   const events = [] as GameEvent[];
 
@@ -65,7 +64,11 @@ export function resolveRound(
   const orderedTributes = setInitiativeOrder(tributes, rng);
 
   for (const tribute of orderedTributes) {
+    if (tribute.alive === false) continue;
+
     const action = actions[tribute.tributeId];
+
+    if (!action) throw new Error(`no action for tribute ${tribute.tributeId}`);
 
     if (action?.type !== "forage") continue;
 
@@ -141,10 +144,11 @@ export function resolveRound(
     }
   }
 
+  copiedGameState.rngState = rng.getState();
+
   return {
     state: copiedGameState,
     events,
-    rngState: rng.getState(),
   };
 }
 
