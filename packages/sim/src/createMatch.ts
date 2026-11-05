@@ -8,6 +8,7 @@ import {
   type ZoneId,
 } from "@arena/shared";
 import { createRng } from "./rng";
+import { STARTING_HP, STARTING_HUNGER } from "./rules";
 
 export function createMatch({
   matchId,
@@ -58,8 +59,8 @@ export function createMatch({
   const builtTributes = tributes.map((tribute: TributeConfig, i) => {
     const builtTribute: Tribute = {
       ...tribute,
-      hp: 100,
-      hunger: 0,
+      hp: STARTING_HP,
+      hunger: STARTING_HUNGER,
       position: shuffledSlots[i] as ZoneId,
       alive: true,
       inventory: [

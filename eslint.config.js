@@ -10,6 +10,7 @@ export default tseslint.config(
       "**/dist/**",
       "**/coverage/**",
       "apps/web/**",
+      "**/scratch/**",
     ],
   },
   js.configs.recommended,

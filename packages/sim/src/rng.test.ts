@@ -38,8 +38,8 @@ describe("createRng", () => {
   });
 
   test("rebuilding from a saved state continues the exact same sequence", () => {
-    let saved = createRng(42);
-    let straight = createRng(42);
+    const saved = createRng(42);
+    const straight = createRng(42);
     const firstRun = take(saved, 5);
     const resumed = createRng(saved.getState());
     expect([...firstRun, ...take(resumed, 5)]).toEqual(take(straight, 10));
