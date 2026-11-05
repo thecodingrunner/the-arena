@@ -119,3 +119,150 @@ export type GameState = {
   alliances: Alliance[]; // live here, not on Tribute: single source of truth
   zones: Zone[]; // per-match copy, since food and water change during play
 };
+
+// Intent: what a tribute tries to do. The engine decides what actually happens.
+export type Action =
+  | { type: "forage" }
+  | { type: "hide" }
+  | { type: "rest" }
+  | { type: "hunt"; targetId: TributeId }
+  | { type: "betray"; allyId: TributeId }
+  | { type: "propose_alliance"; tributeId: TributeId }
+  | { type: "accept_alliance"; proposerId: TributeId }
+  | { type: "move_to"; zoneId: ZoneId }
+  | { type: "use_item"; itemId: string };
+
+// Engine input (not an Action): applied at the first round that hasn't been simulated yet
+export type SponsorGift = {
+  giftId: string; // idempotency key
+  from: PlayerId | null;
+  to: TributeId;
+  itemDefinitionId: string;
+  appliesInRound: number;
+};
+
+// Outcomes: past tense, versioned. "Changed" events carry the delta and the new value.
+type EventBase = {
+  matchId: MatchId;
+  seq: number;
+  round: number;
+  location: ZoneId;
+  v: 1;
+};
+
+export type DeathCause =
+  | { kind: "attack"; killerId: TributeId }
+  | { kind: "hunger" }
+  | { kind: "hazard"; hazard: string }; // narrow to a Hazard union in step 10
+
+export type TributeDied = EventBase & {
+  type: "TributeDied";
+  victimId: TributeId;
+  cause: DeathCause;
+};
+
+export type TributeHungerChanged = EventBase & {
+  type: "TributeHungerChanged";
+  tributeId: TributeId;
+  delta: number; // positive = hungrier
+  hunger: number;
+};
+
+export type TributeHealthChanged = EventBase & {
+  type: "TributeHealthChanged";
+  tributeId: TributeId;
+  delta: number; // positive = healed
+  hp: number;
+};
+
+export type TributeForaged = EventBase & {
+  type: "TributeForaged";
+  tributeId: TributeId;
+  success: boolean;
+};
+
+export type TributeRested = EventBase & {
+  type: "TributeRested";
+  tributeId: TributeId;
+};
+
+export type TributeChangedZone = EventBase & {
+  type: "TributeChangedZone";
+  tributeId: TributeId;
+  previousZoneId: ZoneId;
+  currentZoneId: ZoneId;
+};
+
+export type TributeAttacked = EventBase & {
+  type: "TributeAttacked";
+  attackerId: TributeId;
+  victimId: TributeId;
+};
+
+export type TributeGainedItem = EventBase & {
+  type: "TributeGainedItem";
+  tributeId: TributeId;
+  item: InventoryItem;
+};
+
+export type TributeUsedItem = EventBase & {
+  type: "TributeUsedItem";
+  tributeId: TributeId;
+  item: SponsorItemInstance;
+};
+
+export type TributeBetrayedAlliance = EventBase & {
+  type: "TributeBetrayedAlliance";
+  betrayerId: TributeId;
+  allianceId: string;
+};
+
+export type TributeReceivedGift = EventBase & {
+  type: "TributeReceivedGift";
+  recipientId: TributeId;
+  senderId: PlayerId | null;
+  itemDefinitionId: string;
+  giftId: string;
+  appliedInRound: number;
+};
+
+export type ZoneFoodChanged = EventBase & {
+  type: "ZoneFoodChanged";
+  zoneId: ZoneId;
+  delta: number;
+  food: number;
+};
+
+export type ZoneWaterChanged = EventBase & {
+  type: "ZoneWaterChanged";
+  zoneId: ZoneId;
+  delta: number;
+  water: number;
+};
+
+export type ZoneFlooded = EventBase & {
+  type: "ZoneFlooded";
+  zoneId: ZoneId;
+};
+
+export type ZoneClosed = EventBase & {
+  type: "ZoneClosed";
+  zoneId: ZoneId;
+};
+
+export type GameEvent =
+  | TributeDied
+  | TributeHungerChanged
+  | TributeHealthChanged
+  | TributeForaged
+  | TributeRested
+  | TributeChangedZone
+  | TributeAttacked
+  | TributeGainedItem
+  | TributeUsedItem
+  | TributeBetrayedAlliance
+  | TributeReceivedGift
+  | ZoneFoodChanged
+  | ZoneWaterChanged
+  | ZoneFlooded
+  | ZoneClosed;
