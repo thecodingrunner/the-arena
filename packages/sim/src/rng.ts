@@ -5,7 +5,7 @@ export function createRng(seed: number) {
 
   const roundedSeed = Math.round(seed);
 
-  const {generator, getState} = mulberry32(roundedSeed);
+  const { generator, getState } = mulberry32(roundedSeed);
 
   return {
     next: generator,
@@ -22,13 +22,13 @@ function mulberry32(seed: number) {
 
   const getState = function () {
     return state;
-  }
+  };
   const generator = function () {
-    state = (state + 0x6d2b79f5) | 0; 
-    // Keep state 32-bit (| 0): otherwise the value of state will 
-    // pass 2⁵³ (max safe integer, and state + 0x6d2b79f5 silently 
-    // gets rounded to the nearest number that can be stored) after 
-    // around 5 million calls, so the sequence silently drifts from 
+    state = (state + 0x6d2b79f5) | 0;
+    // Keep state 32-bit (| 0): otherwise the value of state will
+    // pass 2⁵³ (max safe integer, and state + 0x6d2b79f5 silently
+    // gets rounded to the nearest number that can be stored) after
+    // around 5 million calls, so the sequence silently drifts from
     // being mulberry32
     let t = state;
     t = Math.imul(t ^ (t >>> 15), t | 1);

@@ -24,13 +24,13 @@ describe("createMatch", () => {
     const arena = placeholderArena;
 
     const before = arena.zones[0]?.food;
-    
+
     const match = createMatch(matchConfig);
 
     match.zones[0]!.food -= 1;
-    
+
     expect(arena.zones[0]?.food).toEqual(before);
-  })
+  });
 
   test("all tributes in the match have hunger of 0", () => {
     const matchConfig = makeConfig();
@@ -218,8 +218,8 @@ describe("createMatch", () => {
   test("throws when arenaId is unknown", () => {
     const matchConfig = makeConfig();
 
-    expect(() =>
-      createMatch({ ...matchConfig, arenaId: "banana" }),
-    ).toThrow("Unknown arenaId");
-  })
+    expect(() => createMatch({ ...matchConfig, arenaId: "banana" })).toThrow(
+      "Unknown arenaId",
+    );
+  });
 });
