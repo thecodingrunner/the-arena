@@ -1,0 +1,14 @@
+export const MAX_HP = 100;
+export const STARTING_HP = MAX_HP;   // tributes start at full health
+export const MAX_HUNGER = 100;
+export const STARTING_HUNGER = 0;
+export const INITIATIVE_DIE = 5;
+export const FORAGE_MAX_CHANCE = 0.9;
+export const FORAGE_BASE_CHANCE = 0.4;
+export const FORAGING_PER_INTELLIGENCE = 0.05;
+export const FORAGE_PER_BONUS = 0.05;
+export const HUNGER_VALUE = { food: 30, water: 15 } as const;
+export const HEALTH_PER_REST = 10;
+export const HUNGER_PER_MOVE_COST = 3;
+export const HUNGER_TICK = 10;
+export const HUNGER_HEALTH_COST = 10;    // hunger costs health
