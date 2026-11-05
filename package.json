@@ -10,7 +10,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint . && npm run lint -w apps/web",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "time": "node scripts/session-time.js"
   },
   "type": "module",
   "devDependencies": {

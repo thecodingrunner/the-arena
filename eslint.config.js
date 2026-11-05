@@ -14,5 +14,12 @@ export default tseslint.config(
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    // Plain Node scripts: allow Node's globals.
+    files: ["scripts/**/*.js"],
+    languageOptions: {
+      globals: { process: "readonly", console: "readonly" },
+    },
+  },
   prettier,
 );
