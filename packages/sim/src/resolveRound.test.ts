@@ -8,12 +8,7 @@ import {
 } from "./testFixtures";
 import { createMatch } from "./createMatch";
 import { resolveRound } from "./resolveRound";
-import {
-  type Action,
-  type GameState,
-  type TributeId,
-  type WeaponInstance,
-} from "@arena/shared";
+import { type Action, type GameState, type TributeId } from "@arena/shared";
 
 type RoundActions = Record<TributeId, Action>;
 
@@ -135,7 +130,7 @@ describe("resolveRound", () => {
     const match2 = stateWithHunger(2, 50, 3);
     const zone2 = zoneOf(match2, 0);
     zone2.food = 3;
-    
+
     const { state: after1, events: events1 } = resolveRound(match1, actions);
     const { state: after2, events: events2 } = resolveRound(match2, actions);
 
@@ -444,7 +439,7 @@ describe("resolveRound", () => {
       zoneBefore.food = 3;
       zoneBefore.water = 3;
 
-      const { state: after, events } = resolveRound(before, forageActions);
+      const { events } = resolveRound(before, forageActions);
 
       const foraged = findEvent(
         events,
@@ -460,21 +455,287 @@ describe("resolveRound", () => {
     expect(successes).toBeGreaterThanOrEqual(200 * 0.6);
     expect(successes).toBeLessThanOrEqual(200 * 0.8);
   });
+
+  // rest
+  // - hp +10, capped at 100
+
+  test.each([
+    [50, 60, 10],
+    [95, 100, 5],
+    [100, 100, 0],
+  ])(
+    "rest from hp %i -> hp %i (delta %i)",
+    (startHp, expectedHp, expectedDelta) => {
+      const restActions: RoundActions = {
+        t1: { type: "rest" },
+        t2: { type: "forage" },
+        t3: { type: "forage" },
+      };
+
+      const before = createMatch(makeConfig());
+      before.tributes[0]!.hp = startHp;
+      const { events } = resolveRound(before, restActions);
+
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: "TributeHealthChanged",
+          tributeId: "t1",
+          delta: expectedDelta,
+          hp: expectedHp,
+        }),
+      );
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: "TributeRested",
+          tributeId: "t1",
+        }),
+      );
+    },
+  );
+
+  // move_to
+  // - position changes to the target, extra hunger = cost × 3, emits TributeChangedZone
+
+  test("move_to: position changes to the target, extra hunger = cost × 3, emits TributeChangedZone", () => {
+    const restActions: RoundActions = {
+      t1: { type: "move_to", zoneId: "centre" },
+      t2: { type: "forage" },
+      t3: { type: "forage" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.tributes[0]!.hunger = 50;
+    before.tributes[0]!.position = "forest";
+    const { events } = resolveRound(before, restActions);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeChangedZone",
+        tributeId: "t1",
+        previousZoneId: "forest",
+        currentZoneId: "centre",
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeHungerChanged",
+        tributeId: "t1",
+        delta: 3,
+        hunger: 53,
+      }),
+    );
+  });
+
+  test("move_to: hunger caps at 100", () => {
+    const restActions: RoundActions = {
+      t1: { type: "move_to", zoneId: "centre" },
+      t2: { type: "forage" },
+      t3: { type: "forage" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.tributes[0]!.hunger = 100;
+    before.tributes[0]!.position = "forest";
+    const { events } = resolveRound(before, restActions);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeChangedZone",
+        tributeId: "t1",
+        previousZoneId: "forest",
+        currentZoneId: "centre",
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeHungerChanged",
+        tributeId: "t1",
+        delta: 0,
+        hunger: 100,
+      }),
+    );
+  });
+
+  test("move_to: position changes to the target, extra hunger = cost × 3, emits TributeChangedZone", () => {
+    const restActions: RoundActions = {
+      t1: { type: "move_to", zoneId: "river" },
+      t2: { type: "forage" },
+      t3: { type: "forage" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.tributes[0]!.hunger = 50;
+    before.tributes[0]!.position = "forest";
+
+    expect(() => resolveRound(before, restActions)).toThrow(
+      "t1 can not move from forest to river because there is no edge",
+    );
+  });
+
+  test("move_to: position changes to the target, extra hunger = cost × 3, emits TributeChangedZone", () => {
+    const moveActions: RoundActions = {
+      t1: { type: "move_to", zoneId: "nowhere" },
+      t2: { type: "forage" },
+      t3: { type: "forage" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.tributes[0]!.hunger = 50;
+    before.tributes[0]!.position = "forest";
+
+    expect(() => resolveRound(before, moveActions)).toThrow(
+      "nowhere does not exist, so tribute t1 cannot move there",
+    );
+  });
+
+  // Hunger tick
+  // - runs after actions (a tribute at 98 who forages successfully doesn't hit 100)
+  // - capped at 100
+  // - at 100: hp −10
+  // - hp reaching 0 → alive false, TributeDied with cause hunger
+  // - dead tributes don't tick
+
+  test("runs after actions (a tribute at 98 who forages successfully doesn't hit 100)", () => {
+    const forageActions: RoundActions = {
+      t1: { type: "forage" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    for (let seed = 1; seed <= 20; seed++) {
+      const before = stateWithHunger(seed, 98);
+      const zoneBefore = zoneOf(before, 0);
+      zoneBefore.food = 3;
+
+      before.tributes[0]!.stats.endurance = 5;
+
+      const { state: after, events } = resolveRound(before, forageActions);
+
+      const foraged = findEvent(
+        events,
+        "TributeForaged",
+        (e) => e.tributeId === "t1",
+      );
+      expect(foraged).toBeDefined();
+      if (!foraged!.success) continue;
+
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: "TributeHungerChanged",
+          tributeId: "t1",
+          delta: -30,
+        }),
+      );
+
+      const lostHealth = findEvent(
+        events,
+        "TributeHealthChanged",
+        (e) => e.tributeId === "t1",
+      );
+
+      expect(lostHealth).not.toBeDefined();
+
+      // 98 − 30 (food) = 68, then tick +(10 − floor(5/4)) = +9 → 77
+      expect(after.tributes[0]!.hunger).toBe(77);
+    }
+  });
+
+  test("capped at 100: when hunger hits 100, hp −10", () => {
+    const restActions: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = stateWithHunger(1, 95);
+    const { state: after, events } = resolveRound(before, restActions);
+
+    expect(after.tributes[0]!.hunger).toBe(100);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeHealthChanged",
+        tributeId: "t1",
+        delta: -10,
+      }),
+    );
+  });
+
+  test("a starving tribute who doesn't eat or rest dies", () => {
+    const restActions: RoundActions = {
+      t1: { type: "hide" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = stateWithHunger(1, 100);
+    before.tributes[0]!.hp = 10;
+
+    const { state: after, events } = resolveRound(before, restActions);
+
+    expect(after.tributes[0]!.alive).toBe(false);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeDied",
+        victimId: "t1",
+        cause: { kind: "hunger" },
+      }),
+    );
+  });
+
+  test("dead tributes don't tick", () => {
+    const restActions: RoundActions = {
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.tributes[0]!.alive = false;
+
+    const { events } = resolveRound(before, restActions);
+
+    const involves = anyEventInvolves(events, "t1");
+
+    expect(involves).toBe(false);
+  });
+
+  // Events
+  // - every event has the matchId, the current round and v:1; seq values are consecutive and continue from state.seq
+  // - state.seq afterwards = the next unused seq
+
+  test("every event has the matchId, the current round and v:1; seq values are consecutive and continue from state.seq", () => {
+    const restActions: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.seq = 42;
+
+    const { events } = resolveRound(before, restActions);
+
+    expect(events.length).toBeGreaterThan(0);
+
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i]!;
+      expect(event.matchId).toBe(before.matchId);
+      expect(event.round).toBe(before.round + 1);
+      expect(event.v).toBe(1);
+      expect(event.seq).toBe(42 + i);
+    }
+  });
+
+  test("state.seq afterwards = the next unused seq", () => {
+    const restActions: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.seq = 42;
+    const { state: after, events } = resolveRound(before, restActions);
+
+    expect(after.seq).toBe(42 + events.length);
+  });
 });
-
-// rest
-// - hp +10, capped at 100
-
-// move_to
-// - position changes to the target, extra hunger = cost × 3, emits TributeChangedZone
-
-// Hunger tick
-// - runs after actions (a tribute at 98 who forages successfully doesn't hit 100)
-// - capped at 100
-// - at 100: hp −10
-// - hp reaching 0 → alive false, TributeDied with cause hunger
-// - dead tributes don't tick
-
-// Events
-// - every event has the matchId, the current round and v:1; seq values are consecutive and continue from state.seq
-// - state.seq afterwards = the next unused seq
