@@ -1,8 +1,11 @@
 import { arenaDefinitions } from "@arena/shared";
 import type {
   ArenaDefinition,
+  GameEvent,
+  GameState,
   MatchConfig,
   TributeConfig,
+  Zone,
 } from "@arena/shared";
 
 // The arena makeConfig uses. Throws (rather than returning undefined) so tests get a narrowed type.
@@ -62,4 +65,36 @@ export function makeConfig(overrides: Partial<MatchConfig> = {}): MatchConfig {
     ],
     ...overrides,
   };
+}
+
+type EventOfType<T extends GameEvent["type"]> = Extract<GameEvent, { type: T }>;
+
+// Finds the first event of a type, typed as that event. Optional filter on its fields.
+export function findEvent<T extends GameEvent["type"]>(
+  events: GameEvent[],
+  type: T,
+  where: (event: EventOfType<T>) => boolean = () => true,
+): EventOfType<T> | undefined {
+  return filterEvents(events, type, where)[0];
+}
+
+// All events of a type, typed as that event. Optional filter on their fields.
+export function filterEvents<T extends GameEvent["type"]>(
+  events: GameEvent[],
+  type: T,
+  where: (event: EventOfType<T>) => boolean = () => true,
+): EventOfType<T>[] {
+  return events.filter(
+    (e): e is EventOfType<T> => e.type === type && where(e as EventOfType<T>),
+  );
+}
+
+// The zone a tribute is standing in. Returns the state's own object, so tests can arrange it:
+// zoneOf(state, 0).food = 1
+export function zoneOf(state: GameState, tributeIndex: number): Zone {
+  const tribute = state.tributes[tributeIndex];
+  if (!tribute) throw new Error(`no tribute at index ${tributeIndex}`);
+  const zone = state.zones.find((z) => z.zoneId === tribute.position);
+  if (!zone) throw new Error(`zone ${tribute.position} is not in state.zones`);
+  return zone;
 }
