@@ -67,3 +67,40 @@ Record durable understanding, not every definition encountered.
 - **Corrected understanding:** assumed that instances would have to be set, rather than just using an id to represent a definition
 - **Example:** a weaponId or arenaId can be set initially to the GameConfig, without adding the actual instances
 - **Related concepts:** 
+
+## 2026-11-05: Vacuous passes 
+- **Learner's explanation:** a vacuous pass is when the test passes despite nothing actually running, due to empty loops etc. 
+- **Corrected understanding:** Initially assumed a test had passed just because it was green, but it is important to check the test for any potential vacuous passes. 
+- **Example:** adding a count guard on the arenaDefinitions to prevent describe.each([]) running on an empty array.
+- **Related concepts:** 
+
+## 2026-11-05: Shallow vs deep copy 
+- **Learner's explanation:** a shallow copy does not copy objects that are nested in an arraw, whereas a deep copy maps through said objects and copies them.
+- **Corrected understanding:** Before I assumed that copying an array like [..arr] would complete a deep copy without having to map the objects nested within it. Now know to take deep copies. 
+- **Example:** the zones in createMatch are objects so had to take a deep copy.
+- **Related concepts:** 
+
+## 2026-11-05: ! and runtime checks vs types
+- **Learner's explanation:** ! is a compile-time promise, whereas if (!x) throw actually narrows and throws an error. 
+- **Corrected understanding:** 
+- **Example:** 
+- **Related concepts:** 
+
+## 2026-11-05: Events isolate cause
+- **Learner's explanation:** events record one cause and its effect, whereas the final state is the sum of what happened. Therefore it is easier to test for single events, as the sum does not need to be calculated.
+- **Corrected understanding:** Before I was just checking the final state and assuming that the difference would be the impact of a single event. 
+- **Example:** Checking the final state of foraging rather than the Event would lead to a failed test if the hunger tick isn't considered
+- **Related concepts:** 
+
+## 2026-11-05: Testing seeded randomness
+- **Learner's explanation:** when there is seeded randomness, it helps to loop over multiple seeds and check when a rule applied. Taking a count of said events, or comparing the rates with a tolerance adjusted range is useful when the event happens at a certain rate. 
+- **Corrected understanding:** 
+- **Example:** 
+- **Related concepts:** 
+
+## 2026-11-05: Helpers calculate, the orchestrator applies
+- **Learner's explanation:** Helpers are for calculating values but should not be applying changes to state, or emitting events, this should be done by the orchestrator
+- **Corrected understanding:** 
+- **Example:** feed returns {hunger, delta}; resolveRound mutates state and emits, keeping seq order in one place
+- **Related concepts:** 
+

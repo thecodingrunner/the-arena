@@ -32,18 +32,9 @@ ROOT CONCEPT: The fact that quantifies apply to the set before it, and that the 
 PREVENTION:Test a new regex on regex101 against one attack string and one legitimate string before putting it in code
 CATEGORY: Missing domain knowledge
 
-## 2026-10-17: while statements and immutability
-
-BUG: Calling generator incorrectly 
-ORIGINAL MODEL: Was calling a reinstantiation of the generator rather than its function
-REAL MODEL: 
-MISSED SIGNAL: 
-ROOT CONCEPT: 
-PREVENTION: Whenever something has state, ask: where is it created, and how many times does that line run?
-
 ## 2026-11-02: Returned a snapshot instead of a live reading (state / getState() vs getState)
 
-## 2026-10-17: arrange, act, assert (don't change arena data)
+## 2026-11-05: arrange, act, assert (don't change arena data)
 
 BUG: was changing the arena data to meet preconditions, but this was leading to failed tests due to the varied starting points of tributes
 ORIGINAL MODEL: 
@@ -51,3 +42,12 @@ REAL MODEL: the test relied on fixture data for its precondition, instead of arr
 MISSED SIGNAL: 
 ROOT CONCEPT: 
 PREVENTION: reassigned the food and water values of the location zone within the test
+
+## 2026-11-05: The move_to test expected the wrong sign, the same as the code
+
+BUG: the test was passing despite the delta sign being incorrect, as the test had been built to match the incorrect engine code
+ORIGINAL MODEL: the test was written from the implementation, not the spec, so both agreed on the bug.
+REAL MODEL: should write tests before implementing engine logic, and derive values from doc definitions/rules
+MISSED SIGNAL: missed the incorrect logic since the test was passing, but hunger was decreasing on moving zones
+ROOT CONCEPT: order of writting tests and implementation
+PREVENTION: derive expected values from round-execution.md; writing tests first makes that easier, but doesn't guarantee it.

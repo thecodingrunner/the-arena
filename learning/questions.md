@@ -14,7 +14,7 @@ Keep unresolved questions concise. Add a date or context when it helps.
 - **Context:**
 - **Current hypothesis:**
 - **Evidence to check:**
-- **Status:** unresolved
+- **Status:** resolved, implemented this in resolveRound, typescript throws an error if a case is deleted. The deleted type reaches default, where it can't be assigned to never, so it's a compile error, not a runtime one. 
 
 ## 2026-10-16: should ...tribute be converted to a deeper copy to copy stats
 
