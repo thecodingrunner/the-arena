@@ -981,7 +981,7 @@ describe("resolveRound", () => {
     expect(successes).toBeGreaterThan(0);
   });
 
-  test("when t1 has a bow (ammo 10) and agility 10 (guarrenteed initiative), and t1 and t2 both attack each other, t2's attack must be pinned down whenever t1 hits", () => {
+  test("when t1 has a bow (ammo 10) and agility 10 and intelligence 10 (guarrenteed initiative), and t1 and t2 both attack each other, t2's attack must be pinned down whenever t1 hits", () => {
     const actions: RoundActions = {
       t1: { type: "hunt", targetId: "t2" },
       t2: { type: "hunt", targetId: "t1" },
@@ -993,6 +993,8 @@ describe("resolveRound", () => {
     for (let seed = 0; seed < 20; seed++) {
       const before = createMatch(makeConfig({ seed }));
       before.tributes[1]!.position = "forest";
+      before.tributes[1]!.stats.intelligence = 1;
+      before.tributes[1]!.stats.agility = 1;
       before.tributes[0]!.stats.intelligence = 10;
       before.tributes[0]!.stats.agility = 10;
       before.tributes[0]!.position = "forest";
