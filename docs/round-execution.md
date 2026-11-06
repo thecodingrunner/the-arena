@@ -19,6 +19,7 @@
 | `rest` | hp +10 (max 100) | `TributeRested`, `TributeHealthChanged` |
 | `move_to` | Position becomes the target zone. Extra hunger = edge `cost × 3`. Arrives the same round; cost only adds hunger. | `TributeChangedZone`, `TributeHungerChanged` |
 | **Hunger tick** (automatic, end of round) | hunger `+ (10 − floor(endurance / 4))`, capped at 100. At 100, hp −10. At hp ≤ 0, `alive = false` | `TributeHungerChanged`, `TributeHealthChanged`, `TributeDied { cause: { kind: "hunger" } }` |
+| `hunt` | See combat.md |  |
 
 ### Deferred
 - `hide`: step 5 (only matters for spotting in combat)

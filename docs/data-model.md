@@ -116,8 +116,6 @@ use_item
 
 WeaponDefinition
 weapon_def_id
-range: number
-reload_time / attack_speed: number
 power: number
 foraging_bonus: number
 scales_with: keyof Stats
@@ -131,11 +129,11 @@ ammunition: number
 type WeaponDefinition = {
     name: string;
     weaponDefinitionId: string;
-    range: number;
-    attackSpeed: number;
     power: number;
     foragingBonus: number;
     scalesWith: keyof Stats;
+    startingAmmunition: number | null;
+    ranged: boolean;
 }
 
 type WeaponInstance = {

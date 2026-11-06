@@ -7,3 +7,4 @@
 8. When the input means the caller has a bug, crash at the bug, not three steps later.
 9. Move events are located at the origin.
 10. resting exactly cancels out the starvation drain (+10 / -10)
+11. If the attacker has more than one weapon, the weapon used is the one with the highest expected damage for this attacker
