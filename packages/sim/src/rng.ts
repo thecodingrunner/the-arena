@@ -46,7 +46,7 @@ function int(min: number, max: number, generator: () => number) {
   return Math.floor(generator() * (max - min + 1)) + min;
 }
 
-function chance(p: number, generator: () => number) {
+function chance(p: number, generator: () => number): boolean {
   if (Number.isNaN(p)) throw new Error("p needs to be a valid number");
   // The [0, 1) range clamps out-of-range p, and < (not <=) keeps chance(0) impossible
   return generator() < p;

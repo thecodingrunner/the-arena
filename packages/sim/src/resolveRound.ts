@@ -7,10 +7,30 @@ import {
   type GameState,
   type Tribute,
   type TributeId,
+  type WeaponInstance,
   type Zone,
 } from "@arena/shared";
 import { createRng, type Rng } from "./rng";
-import { FORAGE_BASE_CHANCE, FORAGE_MAX_CHANCE, FORAGE_PER_BONUS, FORAGING_PER_INTELLIGENCE, HEALTH_PER_REST, HUNGER_HEALTH_COST, HUNGER_PER_MOVE_COST, HUNGER_TICK, HUNGER_VALUE, INITIATIVE_DIE, MAX_HP, MAX_HUNGER } from "./rules";
+import {
+  AGILITY_DODGE_BONUS,
+  BASE_HIT_RATE,
+  FORAGE_BASE_CHANCE,
+  FORAGE_MAX_CHANCE,
+  FORAGE_PER_BONUS,
+  FORAGING_PER_INTELLIGENCE,
+  HEALTH_PER_REST,
+  HIDING_BONUS,
+  HUNGER_HEALTH_COST,
+  HUNGER_PER_MOVE_COST,
+  HUNGER_TICK,
+  HUNGER_VALUE,
+  INITIATIVE_DIE,
+  MAX_HP,
+  MAX_HUNGER,
+  SPOTTING_DIE,
+  WEAPON_DAMAGE_BONUS,
+  WEAPON_HIT_RATE_BONUS,
+} from "./rules";
 
 type DistributiveOmit<T, K extends keyof T> = T extends unknown
   ? Omit<T, K>
@@ -31,7 +51,11 @@ export function resolveRound(
   const events = [] as GameEvent[];
 
   const tributes = state.tributes.map((tribute) => {
-    return { ...tribute };
+    return {
+      ...tribute,
+      inventory: tribute.inventory.map((i) => ({ ...i })),
+      hiding: false,
+    };
   });
   const zones = state.zones.map((zone) => {
     return { ...zone };
@@ -49,6 +73,8 @@ export function resolveRound(
   )!; // safe because createMatch already validated arenaId
 
   const edges = arena.edges;
+
+  const pinned = new Set<TributeId>();
 
   function emitEvent(event: EventInput) {
     events.push({
@@ -69,6 +95,8 @@ export function resolveRound(
     rng,
     edges,
     emitEvent,
+    copiedGameState,
+    pinned,
   };
 
   for (const tribute of orderedTributes) {
@@ -88,8 +116,12 @@ export function resolveRound(
       case "move_to":
         resolveMoveTo(ctx, tribute, action.zoneId);
         break;
-      case "hide":
       case "hunt":
+        resolveHunt(ctx, tribute, action.targetId);
+        break;
+      case "hide":
+        resolveHide(ctx, tribute);
+        break;
       case "betray":
       case "propose_alliance":
       case "accept_alliance":
@@ -106,7 +138,10 @@ export function resolveRound(
     if (tribute.alive === false) continue;
     // Hunger tick
 
-    const newHunger = Math.min(MAX_HUNGER, tribute.hunger + (HUNGER_TICK - Math.floor(tribute.stats.endurance / 4)));
+    const newHunger = Math.min(
+      MAX_HUNGER,
+      tribute.hunger + (HUNGER_TICK - Math.floor(tribute.stats.endurance / 4)),
+    );
     const delta = newHunger - tribute.hunger;
     tribute.hunger = newHunger;
 
@@ -196,8 +231,10 @@ function feed(
 type Ctx = {
   zones: Zone[];
   rng: Rng;
-  edges?: ArenaDefinition["edges"];
+  edges: ArenaDefinition["edges"];
   emitEvent: (e: EventInput) => void;
+  copiedGameState: GameState;
+  pinned: Set<string>;
 };
 
 function resolveForage(ctx: Ctx, tribute: Tribute) {
@@ -325,4 +362,159 @@ function resolveMoveTo(ctx: Ctx, tribute: Tribute, targetZoneId: string) {
     hunger: newHunger,
     location: previousZone.zoneId,
   });
+}
+
+function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
+  const { emitEvent, copiedGameState, rng, pinned } = ctx;
+
+  const targetTribute = copiedGameState.tributes.find(
+    (t) => t.tributeId === targetTributeId,
+  );
+
+  if (pinned.has(tribute.tributeId)) {
+    emitEvent({
+      type: "TributeAttacked",
+      attackerId: tribute.tributeId,
+      victimId: targetTributeId,
+      outcome: "pinnedDown",
+      location: tribute.position,
+      weaponDefinitionId: "",
+    });
+    return;
+  }
+
+  if (targetTribute === undefined) {
+    throw new Error(
+      `targetTribute ${targetTributeId} does not exist, so tribute ${tribute.tributeId} cannot attack it`,
+    );
+  }
+
+  if (
+    targetTribute.alive === false ||
+    targetTribute.position !== tribute.position
+  ) {
+    emitEvent({
+      type: "TributeAttacked",
+      attackerId: tribute.tributeId,
+      victimId: targetTributeId,
+      outcome: "targetGone",
+      location: tribute.position,
+      weaponDefinitionId: "",
+    });
+    return;
+  }
+
+  if (targetTribute.hiding === true) {
+    const spotted =
+      targetTribute.stats.stealth * HIDING_BONUS + rng.int(1, SPOTTING_DIE) <=
+      tribute.stats.intelligence + rng.int(1, SPOTTING_DIE);
+
+    if (!spotted) {
+      emitEvent({
+        type: "TributeAttacked",
+        attackerId: tribute.tributeId,
+        victimId: targetTributeId,
+        outcome: "notFound",
+        location: tribute.position,
+        weaponDefinitionId: "",
+      });
+      return;
+    }
+  }
+
+  const weaponId = chooseWeapon(tribute);
+  const weaponInstance = tribute.inventory.find(
+    (i) => i.definitionId === weaponId,
+  ) as WeaponInstance | undefined;
+
+  const hit = rng.chance(hitChance(tribute, targetTribute, weaponId));
+
+  if (hit) {
+    emitEvent({
+      type: "TributeAttacked",
+      attackerId: tribute.tributeId,
+      victimId: targetTributeId,
+      outcome: "hit",
+      location: tribute.position,
+      weaponDefinitionId: weaponId,
+    });
+    if (
+      weaponDefinitions.find((d) => d.weaponDefinitionId === weaponId)?.ranged
+    ) {
+      pinned.add(targetTributeId);
+    }
+  } else {
+    emitEvent({
+      type: "TributeAttacked",
+      attackerId: tribute.tributeId,
+      victimId: targetTributeId,
+      outcome: "missed",
+      location: tribute.position,
+      weaponDefinitionId: weaponId,
+    });
+  }
+
+  if (weaponInstance && weaponInstance.ammunition !== null) {
+    if (weaponInstance && weaponInstance.ammunition !== null)
+      weaponInstance.ammunition--;
+
+    emitEvent({
+      type: "TributeAmmunitionChanged",
+      tributeId: tribute.tributeId,
+      itemId: weaponInstance.itemId,
+      delta: -1,
+      ammunition: weaponInstance.ammunition,
+      location: tribute.position,
+    });
+  }
+}
+
+function resolveHide(ctx: Ctx, tribute: Tribute) {
+  const { emitEvent } = ctx;
+  tribute.hiding = true;
+  emitEvent({
+    type: "TributeHid",
+    tributeId: tribute.tributeId,
+    location: tribute.position,
+  });
+}
+
+function chooseWeapon(tribute: Tribute): string {
+  const weapons = tribute.inventory.filter(
+    (i) => i.kind === "weapon" && i.ammunition !== 0,
+  ) as WeaponInstance[];
+
+  weapons.sort((i1, i2) => {
+    const i1Definition = weaponDefinitions.find(
+      (d) => d.weaponDefinitionId === i1.definitionId,
+    )!;
+    const i2Definition = weaponDefinitions.find(
+      (d) => d.weaponDefinitionId === i2.definitionId,
+    )!;
+    const i1Damage =
+      i1Definition.power +
+      tribute.stats[i1Definition.scalesWith] * WEAPON_DAMAGE_BONUS;
+    const i2Damage =
+      i2Definition.power +
+      tribute.stats[i2Definition.scalesWith] * WEAPON_DAMAGE_BONUS;
+
+    return i2Damage - i1Damage;
+  });
+
+  return weapons[0]?.definitionId ?? "unarmed";
+}
+
+function hitChance(
+  attacker: Tribute,
+  victim: Tribute,
+  weaponId: string,
+): number {
+  const weaponDefinition = weaponDefinitions.find(
+    (d) => d.weaponDefinitionId === weaponId,
+  )!;
+  const hitChance =
+    BASE_HIT_RATE +
+    (attacker.stats[weaponDefinition.scalesWith] ?? 0) * WEAPON_HIT_RATE_BONUS -
+    (victim.stats.agility ?? 0) * AGILITY_DODGE_BONUS;
+  return hitChance;
 }

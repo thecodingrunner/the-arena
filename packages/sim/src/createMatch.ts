@@ -68,10 +68,14 @@ export function createMatch({
           kind: "weapon",
           itemId: `${tribute.startingWeaponDefId}-${nextItemId}`,
           definitionId: tribute.startingWeaponDefId,
-          ammunition: 0,
+          ammunition:
+            weaponDefinitions.find(
+              (w) => w.weaponDefinitionId === tribute.startingWeaponDefId,
+            )?.startingAmmunition ?? null,
         },
       ],
       memory: [],
+      hiding: false,
     };
 
     nextItemId++;

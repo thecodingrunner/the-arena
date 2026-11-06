@@ -8,11 +8,29 @@ import {
 } from "./testFixtures";
 import { createMatch } from "./createMatch";
 import { resolveRound } from "./resolveRound";
-import { type Action, type GameState, type TributeId } from "@arena/shared";
+import {
+  type Action,
+  type GameState,
+  type TributeId,
+  type WeaponInstance,
+} from "@arena/shared";
 
 type RoundActions = Record<TributeId, Action>;
 
 describe("resolveRound", () => {
+  test("does not modify the input state", () => {
+    const someActions: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "forage" },
+      t3: { type: "move_to", zoneId: "centre" },
+    };
+    const before = createMatch(makeConfig());
+    before.tributes[2]!.position = "forest";
+    const snapshot = structuredClone(before);
+    resolveRound(before, someActions);
+    expect(before).toEqual(snapshot);
+  });
+
   // Order
   // - round increases by 1
   // - rngState moves on after a round
@@ -738,4 +756,385 @@ describe("resolveRound", () => {
 
     expect(after.seq).toBe(42 + events.length);
   });
+
+  // Checks
+  // - if target is dead, the attack fails with an outcome of targetGone
+  // - if the target is gone, the attack fails with an outcome of targetGone
+  // - the target hides, and the attacker cannot spot the target, the attack fails with an outcome of notFound
+  // - the target hides, but the attacker can spot the target, the attack succeeds
+  // - if the target does not hide, the attacker always spots the target
+  // - can't hurt an ally: step 9/alliances
+  // - throws error if targetId is not a real tribute
+
+  test("if target is dead, the attack fails with an outcome of targetGone", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.tributes[1]!.alive = false;
+
+    const { events } = resolveRound(before, actions);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeAttacked",
+        attackerId: "t1",
+        victimId: "t2",
+        outcome: "targetGone",
+      }),
+    );
+  });
+
+  test("if the target has moved to a different zone, the attack fails with an outcome of targetGone", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.tributes[0]!.position = "forest";
+    before.tributes[1]!.position = "centre";
+
+    const { events } = resolveRound(before, actions);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeAttacked",
+        attackerId: "t1",
+        victimId: "t2",
+        outcome: "targetGone",
+      }),
+    );
+  });
+
+  test("a master hider is never found: victim stealth 10, cover high; attacker intelligence 1", () => {
+    // victim: 10 × 1.5 + d6 = 16–21; hunter: 1 + d6 = 2–7 → never overlap
+
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "hide" },
+      t3: { type: "rest" },
+    };
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.stats.stealth = 10;
+      before.tributes[1]!.stats.intelligence = 10;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.stats.stealth = 1;
+      before.tributes[0]!.stats.intelligence = 1;
+      before.tributes[0]!.position = "forest";
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+      expect(attack?.outcome).toBe("notFound");
+    }
+  });
+
+  test("a genius hunter always finds: victim stealth 1, attacker intelligence 10", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "hide" },
+      t3: { type: "rest" },
+    };
+
+    let hidesFirstOccurrences = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.stats.stealth = 1;
+      before.tributes[1]!.stats.intelligence = 10;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.stats.stealth = 1;
+      before.tributes[0]!.stats.intelligence = 10;
+      before.tributes[0]!.position = "forest";
+
+      const { events } = resolveRound(before, actions);
+
+      const hide = findEvent(events, "TributeHid", (e) => e.tributeId === "t2");
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (hide && attack && hide.seq < attack.seq) {
+        hidesFirstOccurrences++;
+        expect(attack?.outcome).not.toBe("notFound");
+      }
+    }
+
+    expect(hidesFirstOccurrences).toBeGreaterThan(5);
+  });
+
+  test("evenly matched spotting gives both", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "hide" },
+      t3: { type: "rest" },
+    };
+
+    let successfulAttacks = 0;
+    let successfulHides = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.stats.stealth = 1;
+      before.tributes[1]!.stats.intelligence = 10;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.stats.stealth = 1;
+      before.tributes[0]!.stats.intelligence = 1;
+      before.tributes[0]!.position = "forest";
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+      if (attack && attack.outcome !== "notFound") {
+        successfulAttacks++;
+      }
+
+      if (attack && attack.outcome === "notFound") {
+        successfulHides++;
+      }
+    }
+
+    expect(successfulAttacks).toBeGreaterThan(0);
+    expect(successfulHides).toBeGreaterThan(0);
+  });
+
+  test("if the target does not hide, the attacker always spots the target", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.position = "forest";
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+      expect(attack?.outcome).not.toBe("notFound");
+    }
+  });
+
+  // Weapon
+  // - a bow with 0 ammo is skipped by chooseWeapon
+  // - ammo goes down by 1 on hit and missed, but not on notFound or targetGone (TributeAmmunition changed is emmitted)
+  // - when the attacker has more than one weapon, chooseWeapon picks the weapon with the highest damage for that attacker
+  // - when the attacker has no weapon, the attack weapon falls back to unarmed
+  // - unarmed never appears in an inventory, and isn't looted either
+
+  test("a bow with 0 ammo is skipped by chooseWeapon, the attack weapon falls back to unarmed", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    let successes = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.stats.intelligence = 10;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.stats.stealth = 1;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        { definitionId: "bow", ammunition: 0, kind: "weapon", itemId: "b1" },
+      ];
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+      if (attack?.outcome === "hit") {
+        successes++;
+        expect(attack?.weaponDefinitionId).toBe("unarmed");
+      }
+    }
+
+    expect(successes).toBeGreaterThan(0);
+  });
+
+  test("when t1 has a bow (ammo 10) and agility 10 (guarrenteed initiative), and t1 and t2 both attack each other, t2's attack must be pinned down whenever t1 hits", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "hunt", targetId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    let successes = 0;
+    
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.stats.intelligence = 10;
+      before.tributes[0]!.stats.agility = 10;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        { definitionId: "bow", ammunition: 10, kind: "weapon", itemId: "b1" },
+      ];
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (attack && attack.outcome === "hit") {
+        successes++;
+        const attack2 = findEvent(
+          events,
+          "TributeAttacked",
+          (e) => e.attackerId === "t2",
+        );
+        expect(attack2?.outcome).toBe("pinnedDown");
+      }
+    }
+
+    expect(successes).toBeGreaterThan(0);
+  })
+
+  test("ammo goes down by 1 and emits TributeAmmunitionChanged on hit and missed, but not on notFound or targetGone", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "hide" },
+      t3: { type: "rest" },
+    };
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.stats.intelligence = 10;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.stats.stealth = 1;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        { definitionId: "bow", ammunition: 10, kind: "weapon", itemId: "b1" },
+      ];
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+      if (attack?.outcome === "hit" || attack?.outcome === "missed") {
+        expect(
+          (after.tributes[0]!.inventory[0]! as WeaponInstance).ammunition,
+        ).toBe(9);
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            type: "TributeAmmunitionChanged",
+            tributeId: "t1",
+            itemId: "b1",
+            delta: -1,
+            ammunition: 9,
+          }),
+        );
+      } else if (
+        attack?.outcome === "notFound" ||
+        attack?.outcome === "targetGone"
+      ) {
+        expect(events).not.toContainEqual(
+          expect.objectContaining({
+            type: "TributeAmmunitionChanged",
+            tributeId: "t1",
+            itemId: "b1",
+            delta: -1,
+            ammunition: 9,
+          }),
+        );
+        expect(
+          (after.tributes[0]!.inventory[0]! as WeaponInstance).ammunition,
+        ).toBe(10);
+      }
+    }
+  });
+
+  test("when the attacker has more than one weapon, chooseWeapon picks the weapon with the highest damage for that attacker", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.tributes[1]!.stats.stealth = 1;
+    before.tributes[1]!.position = "forest";
+    before.tributes[0]!.stats.agility = 1;
+    before.tributes[0]!.stats.strength = 10;
+    before.tributes[0]!.stats.intelligence = 10;
+    before.tributes[0]!.position = "forest";
+
+    before.tributes[0]!.inventory = [
+      { definitionId: "bow", kind: "weapon", itemId: "s1", ammunition: 10 },
+      { definitionId: "spear", kind: "weapon", itemId: "s2", ammunition: null },
+    ];
+
+    // chooseWeapon will always pick spear, since it has the highest damage (24 + 10 * 2 > 28 + 1 * 2)
+
+    const { events } = resolveRound(before, actions);
+
+    const attack = findEvent(
+      events,
+      "TributeAttacked",
+      (e) => e.attackerId === "t1",
+    );
+    if (attack?.outcome === "hit" || attack?.outcome === "missed") {
+      expect(attack?.weaponDefinitionId).toBe("spear");
+    }
+  });
+
+  test("unarmed never appears in an inventory, and isn't looted either", () => {
+
+  });
+
+  // Hit and damage
+  // - over 200 attack attempts, for an attacker using a spear of strength 5, and a victim with agility 5, the hit rate is 0.7 within +-0.1 (0.2 + 1.0 - 0.5 = 0.7)
+  // - for a spear of power 6, an attacker strength of 5, and a victim endurance of 5, the damage will be 26 (6 + 25 - 5 = 26)
+  // - higher victim agility gives a lower hit rate over the same seeds
+  // - higher victim endurance gives less damage
+  // - the hit chance cannot go below 0.1, and cannot go above 0.8
+  // - the damage never falls below the minimum-damage clamp
+
+  // Death
+  // - when a tribute dies from being attacked, the killerId is set and correct
+  // - when a tribute dies, the killer gains their inventory
+  // - when a tribute dies, their later action is skipped
+  // - when a tribute dies, their hp ends at 0, with alive: false
+  // - two-way hunts: if the first victim survives, both attacks happen. If the first hit kills, the second never happens
+
+  // Events
+  // - each outcome emits the right events in the right order
+
+  // Safety
+  // - the inout state is unchanged, and determinism holds
 });

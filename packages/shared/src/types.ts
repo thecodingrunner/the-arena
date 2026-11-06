@@ -37,6 +37,7 @@ export type TributeState = {
   alive: boolean;
   memory: string[];
   inventory: InventoryItem[];
+  hiding: boolean;
 };
 
 export type Tribute = TributeConfig & TributeState;
@@ -44,18 +45,18 @@ export type Tribute = TributeConfig & TributeState;
 export type WeaponDefinition = {
   weaponDefinitionId: string;
   name: string;
-  range: number;
-  attackSpeed: number;
   power: number;
   foragingBonus: number;
   scalesWith: keyof Stats;
+  startingAmmunition: number | null;
+  ranged: boolean; // a target hit by a ranged weapon can't fight back that round
 };
 
 export type WeaponInstance = {
   kind: "weapon";
   itemId: string;
   definitionId: string; // weaponDefinitionId
-  ammunition: number;
+  ammunition: number | null;
 };
 
 export type SponsorItemDefinition = {
@@ -181,6 +182,11 @@ export type TributeForaged = EventBase & {
   success: boolean;
 };
 
+export type TributeHid = EventBase & {
+  type: "TributeHid";
+  tributeId: TributeId;
+};
+
 export type TributeRested = EventBase & {
   type: "TributeRested";
   tributeId: TributeId;
@@ -197,6 +203,16 @@ export type TributeAttacked = EventBase & {
   type: "TributeAttacked";
   attackerId: TributeId;
   victimId: TributeId;
+  outcome: "hit" | "missed" | "notFound" | "targetGone" | "pinnedDown";
+  weaponDefinitionId: string;
+};
+
+export type TributeAmmunitionChanged = EventBase & {
+  type: "TributeAmmunitionChanged";
+  tributeId: TributeId;
+  itemId: string;
+  delta: number;
+  ammunition: number;
 };
 
 export type TributeGainedItem = EventBase & {
@@ -255,9 +271,11 @@ export type GameEvent =
   | TributeHungerChanged
   | TributeHealthChanged
   | TributeForaged
+  | TributeHid
   | TributeRested
   | TributeChangedZone
   | TributeAttacked
+  | TributeAmmunitionChanged
   | TributeGainedItem
   | TributeUsedItem
   | TributeBetrayedAlliance
