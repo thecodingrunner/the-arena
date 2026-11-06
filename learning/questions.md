@@ -29,3 +29,18 @@ Keep unresolved questions concise. Add a date or context when it helps.
 - **Current hypothesis:** 
 - **Evidence to check:**
 - **Status:** unresolved
+
+## 2026-11-05: should the attacker get a hit bonus when they spot the victim, but the victim doesn't spot them at perception?
+
+- **Context:** 
+- **Current hypothesis:** 
+- **Evidence to check:**
+- **Status:** unresolved
+
+## 2026-11-05: combat.md: multiple strikes per hunt (attackSpeed)? revisit after playtesting
+
+- **Context:** 
+- **Current hypothesis:** 
+- **Evidence to check:**
+- **Status:** unresolved
+

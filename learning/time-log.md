@@ -14,6 +14,7 @@ Budget: **250 hours** by 2026-12-31.
 | 2026-10-30 |       | 3.2         | Seeded RNG                                        |       |
 | 2026-11-02 |       | 7.0         | RNG fixes, match setup /arch                      |       |
 | 2026-11-04 |       | 3.1         | createMatch done (step 3), step 4 /arch           |       |
-| 2026-11-05 |       |             | resolveRound: initiative + forage                 |       |
+| 2026-11-05 |   6.5 | 2.5         | resolveRound: initiative + forage                 |       |
+| 2026-11-06 |   7   | 2.4         | resolveRound: initiative + forage                 |       |
 
 **Running total:** \_\_ / 250 hours
