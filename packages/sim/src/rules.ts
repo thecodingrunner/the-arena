@@ -19,3 +19,6 @@ export const WEAPON_HIT_RATE_BONUS = 0.1;
 export const AGILITY_DODGE_BONUS = 0.05;
 export const HIDING_BONUS = 1.5;
 export const SPOTTING_DIE = 6;
+export const MIN_HIT_CHANCE = 0.1;
+export const MAX_HIT_CHANCE = 0.8;
+export const MIN_DAMAGE = 1;

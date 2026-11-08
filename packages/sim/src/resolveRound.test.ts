@@ -7,11 +7,13 @@ import {
   zoneOf,
 } from "./testFixtures";
 import { createMatch } from "./createMatch";
-import { resolveRound } from "./resolveRound";
+import { damage, hitChance, resolveRound } from "./resolveRound";
 import {
+  weaponDefinitions,
   type Action,
   type GameState,
   type TributeId,
+  type WeaponDefinition,
   type WeaponInstance,
 } from "@arena/shared";
 
@@ -811,7 +813,7 @@ describe("resolveRound", () => {
     );
   });
 
-  test("a master hider is never found: victim stealth 10, cover high; attacker intelligence 1", () => {
+  test("a master hider is never found: victim stealth 10; attacker intelligence 1", () => {
     // victim: 10 × 1.5 + d6 = 16–21; hunter: 1 + d6 = 2–7 → never overlap
 
     const actions: RoundActions = {
@@ -945,6 +947,9 @@ describe("resolveRound", () => {
   // - when the attacker has more than one weapon, chooseWeapon picks the weapon with the highest damage for that attacker
   // - when the attacker has no weapon, the attack weapon falls back to unarmed
   // - unarmed never appears in an inventory, and isn't looted either
+  // - hit/missed: −1, TributeAmmunitionChanged with ammunition: 9
+  // - targetGone: t2 in another zone, no ammo event, still 10
+  // - notFound: master-hider stats with t2 hiding, no ammo event, still 10
 
   test("a bow with 0 ammo is skipped by chooseWeapon, the attack weapon falls back to unarmed", () => {
     const actions: RoundActions = {
@@ -974,6 +979,9 @@ describe("resolveRound", () => {
       );
       if (attack?.outcome === "hit") {
         successes++;
+      }
+
+      if (attack?.outcome === "missed" || attack?.outcome === "hit") {
         expect(attack?.weaponDefinitionId).toBe("unarmed");
       }
     }
@@ -989,7 +997,7 @@ describe("resolveRound", () => {
     };
 
     let successes = 0;
-    
+
     for (let seed = 0; seed < 20; seed++) {
       const before = createMatch(makeConfig({ seed }));
       before.tributes[1]!.position = "forest";
@@ -1022,9 +1030,9 @@ describe("resolveRound", () => {
     }
 
     expect(successes).toBeGreaterThan(0);
-  })
+  });
 
-  test("ammo goes down by 1 and emits TributeAmmunitionChanged on hit and missed, but not on notFound or targetGone", () => {
+  test("hit/missed: −1, TributeAmmunitionChanged with ammunition: 9", () => {
     const actions: RoundActions = {
       t1: { type: "hunt", targetId: "t2" },
       t2: { type: "hide" },
@@ -1061,22 +1069,6 @@ describe("resolveRound", () => {
             ammunition: 9,
           }),
         );
-      } else if (
-        attack?.outcome === "notFound" ||
-        attack?.outcome === "targetGone"
-      ) {
-        expect(events).not.toContainEqual(
-          expect.objectContaining({
-            type: "TributeAmmunitionChanged",
-            tributeId: "t1",
-            itemId: "b1",
-            delta: -1,
-            ammunition: 9,
-          }),
-        );
-        expect(
-          (after.tributes[0]!.inventory[0]! as WeaponInstance).ammunition,
-        ).toBe(10);
       }
     }
   });
@@ -1101,7 +1093,7 @@ describe("resolveRound", () => {
       { definitionId: "spear", kind: "weapon", itemId: "s2", ammunition: null },
     ];
 
-    // chooseWeapon will always pick spear, since it has the highest damage (24 + 10 * 2 > 28 + 1 * 2)
+    // chooseWeapon will always pick spear, since it has the highest damage (24 + 10*2 = 44 > 28 + 1*2 = 30)
 
     const { events } = resolveRound(before, actions);
 
@@ -1115,17 +1107,369 @@ describe("resolveRound", () => {
     }
   });
 
-  test("unarmed never appears in an inventory, and isn't looted either", () => {
+  test("targetGone: t2 in another zone, no ammo event, still 10", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "hide" },
+      t3: { type: "rest" },
+    };
 
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.stats.intelligence = 10;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.stats.stealth = 1;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        { definitionId: "bow", ammunition: 10, kind: "weapon", itemId: "b1" },
+      ];
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (attack?.outcome === "targetGone") {
+        expect(events).not.toContainEqual(
+          expect.objectContaining({
+            type: "TributeAmmunitionChanged",
+            tributeId: "t1",
+            itemId: "b1",
+          }),
+        );
+        expect(
+          (after.tributes[0]!.inventory[0]! as WeaponInstance).ammunition,
+        ).toBe(10);
+      }
+    }
   });
+
+  test("notFound: master-hider stats with t2 hiding, no ammo event, still 10", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "hide" },
+      t3: { type: "rest" },
+    };
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.stats.intelligence = 10;
+      before.tributes[1]!.stats.stealth = 10;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.stats.stealth = 1;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        { definitionId: "bow", ammunition: 10, kind: "weapon", itemId: "b1" },
+      ];
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (attack?.outcome === "notFound") {
+        expect(events).not.toContainEqual(
+          expect.objectContaining({
+            type: "TributeAmmunitionChanged",
+            tributeId: "t1",
+            itemId: "b1",
+          }),
+        );
+        expect(
+          (after.tributes[0]!.inventory[0]! as WeaponInstance).ammunition,
+        ).toBe(10);
+      }
+    }
+  });
+
+  test.todo(
+    "unarmed never appears in an inventory, and isn't looted either",
+    () => {},
+  );
 
   // Hit and damage
   // - over 200 attack attempts, for an attacker using a spear of strength 5, and a victim with agility 5, the hit rate is 0.7 within +-0.1 (0.2 + 1.0 - 0.5 = 0.7)
-  // - for a spear of power 6, an attacker strength of 5, and a victim endurance of 5, the damage will be 26 (6 + 25 - 5 = 26)
+  // - for a spear of power 24, an attacker strength of 5, and a victim endurance of 5, the damage will be 32 (24 + 10 − floor(2.5) = 32)
   // - higher victim agility gives a lower hit rate over the same seeds
   // - higher victim endurance gives less damage
   // - the hit chance cannot go below 0.1, and cannot go above 0.8
   // - the damage never falls below the minimum-damage clamp
+
+  test.each([
+    [1, 10, 0.1],
+    [10, 1, 0.8],
+    [6, 6, 0.5],
+  ])(
+    "an attacker stat of %i and a defender agility of %i will have a hit chance of %d",
+    (attackerStat, defenderAgility, expectedChance) => {
+      // 0.2 + 0.1 − 0.5 = −0.2 → 0.1
+      // 0.2 + 1.0 − 0.05 = 1.15 → 0.8
+
+      const before = createMatch(makeConfig());
+      const { tributes } = before;
+
+      const weaponId = "spear";
+      const weapon: WeaponDefinition = weaponDefinitions.find(
+        (d) => d.weaponDefinitionId === weaponId,
+      )!;
+      tributes[0]!.stats.strength = attackerStat;
+      tributes[1]!.stats.agility = defenderAgility;
+
+      const chance = hitChance(tributes[0]!, tributes[1]!, weapon);
+
+      expect(chance).toBeCloseTo(expectedChance);
+    },
+  );
+
+  test("the hitChance scales with the weapon's stat: a bow uses agility, so strength 10 and agility 1 gives 0.2 + 0.1 − victim dodge", () => {
+    // 0.2 + 0.5 − 0.1 = 0.6
+
+    const before = createMatch(makeConfig());
+    const { tributes } = before;
+
+    const weaponId = "bow";
+    const weapon: WeaponDefinition = weaponDefinitions.find(
+      (d) => d.weaponDefinitionId === weaponId,
+    )!;
+    tributes[0]!.stats.strength = 10;
+    tributes[0]!.stats.agility = 5;
+    tributes[1]!.stats.agility = 2;
+
+    const chance = hitChance(tributes[0]!, tributes[1]!, weapon);
+
+    expect(chance).toBeCloseTo(0.6);
+  });
+
+  test("over 200 attack attempts, for an attacker using a spear of strength 5, and a victim with agility 5, the hit rate is 0.45 within +-0.1 (0.2 + 0.5 - 0.25 = 0.45)", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    let spots = 0;
+    let hits = 0;
+
+    for (let seed = 0; seed < 200; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.stats.agility = 5;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.stats.strength = 5;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        {
+          definitionId: "spear",
+          ammunition: null,
+          kind: "weapon",
+          itemId: "b1",
+        },
+      ];
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (attack?.outcome === "hit" || attack?.outcome === "missed") {
+        spots++;
+        if (attack.outcome === "hit") {
+          hits++;
+        }
+      }
+    }
+
+    const chance = hits / spots;
+    expect(chance).toBeGreaterThanOrEqual(0.45 - 0.1);
+    expect(chance).toBeLessThanOrEqual(0.45 + 0.1);
+  });
+
+  test("hitChance when unarmed scales with strength", () => {
+    // 0.2 + 0.5 − 0.25 = 0.45
+
+    const before = createMatch(makeConfig());
+    const { tributes } = before;
+
+    const weaponId = "unarmed";
+    const weapon: WeaponDefinition = weaponDefinitions.find(
+      (d) => d.weaponDefinitionId === weaponId,
+    )!;
+
+    tributes[0]!.stats.strength = 5;
+    tributes[1]!.stats.agility = 5;
+
+    const chance = hitChance(tributes[0]!, tributes[1]!, weapon);
+
+    expect(chance).toBeCloseTo(0.45);
+  });
+
+  test("for a spear of power 24, an attacker strength of 5, and a victim endurance of 5, the damage will be 32", () => {
+    // (24 + 10 − floor(2.5) = 32)
+
+    const before = createMatch(makeConfig());
+    const { tributes } = before;
+
+    const weaponId = "spear";
+    const weapon: WeaponDefinition = weaponDefinitions.find(
+      (d) => d.weaponDefinitionId === weaponId,
+    )!;
+    tributes[0]!.stats.strength = 5;
+    tributes[1]!.stats.endurance = 5;
+
+    const damageDone = damage(tributes[0]!, tributes[1]!, weapon);
+
+    expect(damageDone).toBe(32);
+  });
+
+  test("for a weak weapon of power -40, and a victim endurance of 5, the damage will be capped to a minimum of 1", () => {
+    // (-40 + 0 − floor(2.5) = -42 -> 1)
+
+    const before = createMatch(makeConfig());
+    const { tributes } = before;
+
+    tributes[0]!.stats.strength = 0;
+    tributes[1]!.stats.endurance = 5;
+
+    const weapon: WeaponDefinition = {
+      // Weak weapon so that the minimum damage bounds are reached
+      weaponDefinitionId: "weakWeapon",
+      name: "WeakWeapon",
+      power: -40,
+      foragingBonus: 0,
+      scalesWith: "strength",
+      startingAmmunition: null,
+      ranged: false,
+    };
+
+    const damageDone = damage(tributes[0]!, tributes[1]!, weapon);
+
+    expect(damageDone).toBe(1);
+  });
+
+  test("on hit: victim HP falls by the damage, TributeHealthChanged has delta: -32 and the new hp", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "forage" },
+      t3: { type: "rest" },
+    };
+
+    let hits = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.stats.endurance = 5;
+      before.tributes[1]!.hp = 50;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.stats.strength = 5;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        {
+          definitionId: "spear",
+          ammunition: null,
+          kind: "weapon",
+          itemId: "b1",
+        },
+      ];
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (attack?.outcome === "hit") {
+        hits++;
+
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            type: "TributeHealthChanged",
+            tributeId: "t2",
+            delta: -32,
+            hp: 18,
+          }),
+        );
+      }
+    }
+
+    expect(hits).toBeGreaterThan(0);
+  });
+
+  test("on miss: no TributeHealthChanged for the victim", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "hide" },
+      t3: { type: "rest" },
+    };
+
+    let misses = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.hp = 50;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        {
+          definitionId: "spear",
+          ammunition: null,
+          kind: "weapon",
+          itemId: "b1",
+        },
+      ];
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (attack?.outcome === "missed") {
+        misses++;
+        
+        expect(events).not.toContainEqual(
+          expect.objectContaining({
+            type: "TributeHealthChanged",
+            tributeId: "t2",
+          }),
+        );
+      }
+    }
+
+    expect(misses).toBeGreaterThan(0);
+  });
+
+  test("damage scales with the weapon's stat: a bow uses agility, not strength", () => {
+    // 28 + 2 - floor(2.5) = 28
+    
+    const before = createMatch(makeConfig());
+    const { tributes } = before;
+
+    const weaponId = "bow";
+    tributes[0]!.stats.strength = 10;
+    tributes[0]!.stats.agility = 1;
+    tributes[1]!.stats.agility = 2;
+    tributes[1]!.stats.endurance = 5;
+
+    const weapon: WeaponDefinition = weaponDefinitions.find(
+      (d) => d.weaponDefinitionId === weaponId,
+    )!;
+
+    const damageDone = damage(tributes[0]!, tributes[1]!, weapon);
+
+    expect(damageDone).toBe(28);
+  })
 
   // Death
   // - when a tribute dies from being attacked, the killerId is set and correct

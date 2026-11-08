@@ -7,6 +7,7 @@ import {
   type GameState,
   type Tribute,
   type TributeId,
+  type WeaponDefinition,
   type WeaponInstance,
   type Zone,
 } from "@arena/shared";
@@ -14,6 +15,7 @@ import { createRng, type Rng } from "./rng";
 import {
   AGILITY_DODGE_BONUS,
   BASE_HIT_RATE,
+  ENDURANCE_TOUGHNESS_BONUS,
   FORAGE_BASE_CHANCE,
   FORAGE_MAX_CHANCE,
   FORAGE_PER_BONUS,
@@ -25,8 +27,11 @@ import {
   HUNGER_TICK,
   HUNGER_VALUE,
   INITIATIVE_DIE,
+  MAX_HIT_CHANCE,
   MAX_HP,
   MAX_HUNGER,
+  MIN_DAMAGE,
+  MIN_HIT_CHANCE,
   SPOTTING_DIE,
   WEAPON_DAMAGE_BONUS,
   WEAPON_HIT_RATE_BONUS,
@@ -40,6 +45,15 @@ type EventInput = DistributiveOmit<
   GameEvent,
   "matchId" | "round" | "seq" | "v"
 >;
+
+type Ctx = {
+  zones: Zone[];
+  rng: Rng;
+  edges: ArenaDefinition["edges"];
+  emitEvent: (e: EventInput) => void;
+  copiedGameState: GameState;
+  pinned: Set<string>;
+};
 
 export function resolveRound(
   state: GameState,
@@ -227,15 +241,6 @@ function feed(
 
   return { hunger, delta };
 }
-
-type Ctx = {
-  zones: Zone[];
-  rng: Rng;
-  edges: ArenaDefinition["edges"];
-  emitEvent: (e: EventInput) => void;
-  copiedGameState: GameState;
-  pinned: Set<string>;
-};
 
 function resolveForage(ctx: Ctx, tribute: Tribute) {
   const { zones, rng, emitEvent } = ctx;
@@ -426,10 +431,19 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
   const weaponInstance = tribute.inventory.find(
     (i) => i.definitionId === weaponId,
   ) as WeaponInstance | undefined;
+  const weaponDefinition = weaponDefinitions.find(
+    (d) => d.weaponDefinitionId === weaponId,
+  )!;
 
-  const hit = rng.chance(hitChance(tribute, targetTribute, weaponId));
+  const hit = rng.chance(hitChance(tribute, targetTribute, weaponDefinition));
 
   if (hit) {
+    const damageDone = damage(tribute, targetTribute, weaponDefinition);
+
+    const newHealth = Math.max(0, targetTribute.hp - damageDone);
+    const delta = newHealth - targetTribute.hp;
+    targetTribute.hp = newHealth;
+
     emitEvent({
       type: "TributeAttacked",
       attackerId: tribute.tributeId,
@@ -437,6 +451,14 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
       outcome: "hit",
       location: tribute.position,
       weaponDefinitionId: weaponId,
+    });
+
+    emitEvent({
+      type: "TributeHealthChanged",
+      tributeId: targetTributeId,
+      delta: delta,
+      hp: newHealth,
+      location: targetTribute.position,
     });
     if (
       weaponDefinitions.find((d) => d.weaponDefinitionId === weaponId)?.ranged
@@ -504,17 +526,43 @@ function chooseWeapon(tribute: Tribute): string {
   return weapons[0]?.definitionId ?? "unarmed";
 }
 
-function hitChance(
+export function hitChance(
   attacker: Tribute,
   victim: Tribute,
-  weaponId: string,
+  weaponDefinition: WeaponDefinition,
 ): number {
-  const weaponDefinition = weaponDefinitions.find(
-    (d) => d.weaponDefinitionId === weaponId,
-  )!;
   const hitChance =
     BASE_HIT_RATE +
-    (attacker.stats[weaponDefinition.scalesWith] ?? 0) * WEAPON_HIT_RATE_BONUS -
-    (victim.stats.agility ?? 0) * AGILITY_DODGE_BONUS;
+    attacker.stats[weaponDefinition.scalesWith] * WEAPON_HIT_RATE_BONUS -
+    victim.stats.agility * AGILITY_DODGE_BONUS;
+
+  if (hitChance < MIN_HIT_CHANCE) {
+    return MIN_HIT_CHANCE;
+  }
+
+  if (hitChance > MAX_HIT_CHANCE) {
+    return MAX_HIT_CHANCE;
+  }
+
   return hitChance;
+}
+
+export function damage(
+  attacker: Tribute,
+  victim: Tribute,
+  weaponDefinition: WeaponDefinition,
+): number {
+  // damage = weapon.power + attacker.stats[weapon.scalesWith] × SCALE_BONUS
+  // - (victim.stats.endurance * 0.5) (clamped e.g. 1)
+
+  const damage =
+    weaponDefinition.power +
+    attacker.stats[weaponDefinition.scalesWith] * WEAPON_DAMAGE_BONUS -
+    Math.floor(victim.stats.endurance * ENDURANCE_TOUGHNESS_BONUS);
+
+  if (damage < MIN_DAMAGE) {
+    return MIN_DAMAGE;
+  }
+
+  return damage;
 }
