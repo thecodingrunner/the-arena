@@ -1437,7 +1437,7 @@ describe("resolveRound", () => {
 
       if (attack?.outcome === "missed") {
         misses++;
-        
+
         expect(events).not.toContainEqual(
           expect.objectContaining({
             type: "TributeHealthChanged",
@@ -1452,7 +1452,7 @@ describe("resolveRound", () => {
 
   test("damage scales with the weapon's stat: a bow uses agility, not strength", () => {
     // 28 + 2 - floor(2.5) = 28
-    
+
     const before = createMatch(makeConfig());
     const { tributes } = before;
 
@@ -1469,14 +1469,354 @@ describe("resolveRound", () => {
     const damageDone = damage(tributes[0]!, tributes[1]!, weapon);
 
     expect(damageDone).toBe(28);
-  })
+  });
 
   // Death
   // - when a tribute dies from being attacked, the killerId is set and correct
-  // - when a tribute dies, the killer gains their inventory
+  // - when a tribute dies, the killer gains their weapon and the rest of the ammunition
   // - when a tribute dies, their later action is skipped
   // - when a tribute dies, their hp ends at 0, with alive: false
   // - two-way hunts: if the first victim survives, both attacks happen. If the first hit kills, the second never happens
+
+  test("when a tribute dies from being attacked, the killerId is set and correct", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    let hits = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.hp = 1;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        {
+          definitionId: "spear",
+          ammunition: null,
+          kind: "weapon",
+          itemId: "b1",
+        },
+      ];
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (attack?.outcome === "hit") {
+        hits++;
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            type: "TributeDied",
+            victimId: "t2",
+            cause: {
+              kind: "attack",
+              killerId: "t1",
+            },
+          }),
+        );
+      }
+    }
+
+    expect(hits).toBeGreaterThan(0);
+  });
+
+  test("when a tribute dies, the killer gains their weapon and the rest of the ammunition", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    let hits = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.hp = 1;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        {
+          definitionId: "spear",
+          ammunition: null,
+          kind: "weapon",
+          itemId: "b1",
+        },
+      ];
+      before.tributes[1]!.inventory = [
+        {
+          definitionId: "bow",
+          ammunition: 2,
+          kind: "weapon",
+          itemId: "b2",
+        },
+      ];
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (attack?.outcome === "hit") {
+        hits++;
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            type: "TributeDied",
+            victimId: "t2",
+            cause: {
+              kind: "attack",
+              killerId: "t1",
+            },
+          }),
+        );
+        expect(after.tributes[0]!.inventory).toContainEqual(
+          expect.objectContaining({
+            definitionId: "bow",
+            ammunition: 2,
+            kind: "weapon",
+            itemId: "b2",
+          }),
+        );
+        expect(after.tributes[1]!.inventory).toEqual([]);
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            type: "TributeGainedItem",
+            tributeId: "t1",
+            item: {
+              definitionId: "bow",
+              ammunition: 2,
+              kind: "weapon",
+              itemId: "b2",
+            },
+          }),
+        );
+      }
+    }
+
+    expect(hits).toBeGreaterThan(0);
+  });
+
+  test("when a tribute dies, their later action is skipped", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    let deadlyAttacks = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.position = "forest";
+      before.tributes[1]!.stats.intelligence = 1;
+      before.tributes[1]!.stats.agility = 1;
+      before.tributes[1]!.hp = 20;
+      before.tributes[0]!.stats.intelligence = 10;
+      before.tributes[0]!.stats.agility = 10;
+      before.tributes[0]!.stats.strength = 10;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.hp = 80;
+      before.tributes[0]!.inventory = [
+        {
+          definitionId: "spear",
+          ammunition: null,
+          kind: "weapon",
+          itemId: "b1",
+        },
+      ];
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (
+        attack?.outcome === "hit" &&
+        findEvent(events, "TributeDied", (e) => e.victimId === "t2")
+      ) {
+        deadlyAttacks++;
+        expect(events).not.toContainEqual(
+          expect.objectContaining({
+            type: "TributeRested",
+            tributeId: "t1",
+          }),
+        );
+      }
+    }
+
+    expect(deadlyAttacks).toBeGreaterThan(0);
+  });
+
+  test("when a tribute dies, their hp ends at 0, with alive: false", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    let hits = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.hp = 1;
+      before.tributes[1]!.position = "forest";
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        {
+          definitionId: "spear",
+          ammunition: null,
+          kind: "weapon",
+          itemId: "b1",
+        },
+      ];
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (attack?.outcome === "hit") {
+        hits++;
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            type: "TributeDied",
+            victimId: "t2",
+            cause: {
+              kind: "attack",
+              killerId: "t1",
+            },
+          }),
+        );
+        expect(after.tributes[1]!.alive).toBe(false);
+        expect(after.tributes[1]!.hp).toBe(0);
+      }
+    }
+
+    expect(hits).toBeGreaterThan(0);
+  });
+
+  test("two-way hunts: if the first victim survives a melee attack, both attacks happen", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "hunt", targetId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    let undeadlyAttacks = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.position = "forest";
+      before.tributes[1]!.stats.intelligence = 1;
+      before.tributes[1]!.stats.agility = 1;
+      before.tributes[1]!.hp = 80;
+      before.tributes[0]!.stats.intelligence = 10;
+      before.tributes[0]!.stats.agility = 10;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.hp = 80;
+      before.tributes[0]!.inventory = [];
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (
+        attack?.outcome === "hit" &&
+        !findEvent(events, "TributeDied", (e) => e.victimId === "t2")
+      ) {
+        undeadlyAttacks++;
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            type: "TributeAttacked",
+            attackerId: "t2",
+            victimId: "t1",
+          }),
+        );
+        const attack = findEvent(
+          events,
+          "TributeAttacked",
+          (e) => e.attackerId === "t2",
+        );
+        expect(attack?.outcome).toBeOneOf(["hit", "missed"]);
+      }
+    }
+
+    expect(undeadlyAttacks).toBeGreaterThan(0);
+  });
+
+  test("two-way hunts: if the first hit kills, the second never happens", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "hunt", targetId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    let deadlyAttacks = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.position = "forest";
+      before.tributes[1]!.stats.intelligence = 1;
+      before.tributes[1]!.stats.agility = 1;
+      before.tributes[1]!.hp = 20;
+      before.tributes[0]!.stats.intelligence = 10;
+      before.tributes[0]!.stats.agility = 10;
+      before.tributes[0]!.stats.strength = 10;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.hp = 80;
+      before.tributes[0]!.inventory = [
+        {
+          definitionId: "spear",
+          ammunition: null,
+          kind: "weapon",
+          itemId: "b1",
+        },
+      ];
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (
+        attack?.outcome === "hit" &&
+        findEvent(events, "TributeDied", (e) => e.victimId === "t2")
+      ) {
+        deadlyAttacks++;
+        expect(events).not.toContainEqual(
+          expect.objectContaining({
+            type: "TributeAttacked",
+            attackerId: "t2",
+            victimId: "t1",
+          }),
+        );
+      }
+    }
+
+    expect(deadlyAttacks).toBeGreaterThan(0);
+  });
 
   // Events
   // - each outcome emits the right events in the right order

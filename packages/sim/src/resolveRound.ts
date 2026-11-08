@@ -139,7 +139,6 @@ export function resolveRound(
       case "betray":
       case "propose_alliance":
       case "accept_alliance":
-      case "use_item":
         break;
       default: {
         const unreachable: never = action; // compile error if a new Action type is added without a case
@@ -460,6 +459,35 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
       hp: newHealth,
       location: targetTribute.position,
     });
+
+    if (targetTribute.hp === 0) {
+      targetTribute.alive = false;
+      emitEvent({
+        type: "TributeDied",
+        victimId: targetTributeId,
+        cause: {
+          kind: "attack",
+          killerId: tribute.tributeId,
+        },
+        location: targetTribute.position,
+      });
+
+      const victimWeapons = targetTribute.inventory.filter(
+        (i) => i.kind === "weapon",
+      );
+
+      tribute.inventory = [...tribute.inventory, ...victimWeapons];
+      targetTribute.inventory = [];
+
+      for (const weapon of victimWeapons) {
+        emitEvent({
+          type: "TributeGainedItem",
+          tributeId: tribute.tributeId,
+          item: weapon,
+          location: tribute.position,
+        });
+      }
+    }
     if (
       weaponDefinitions.find((d) => d.weaponDefinitionId === weaponId)?.ranged
     ) {

@@ -92,8 +92,7 @@ type Action =
     | { type: "betray", allyId: TributeId }
     | { type: "propose_alliance", tributeId: TributeId }
     | { type: "accept_alliance", proposerId: TributeId }
-    | { type: "move_to", zoneId: ZoneId }
-    | { type: "use_item", itemId: string };
+    | { type: "move_to", zoneId: ZoneId };
 
 type SponsorGift = {
     giftId: string, 

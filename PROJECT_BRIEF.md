@@ -20,7 +20,7 @@ Players each create a **tribute**, then watch AI-controlled tributes fight to su
 | **Character creation** | A name, a cosmetic **origin**, **radar chart** stats with a 36-point budget and a maximum of 10 per stat (strength, agility, stealth, intelligence, endurance, charisma), a **weapon** choice, and a **personality prompt** of up to 280 characters that really shapes behaviour |
 | **Map selection** | One of four maps, each a set of zones with its own hazards (§2, Hazards) |
 | **The match** | The player, or every player in the room, watches the match live in an arena view that switches between **top-down** and **2.5D** cameras. An **announcer feed** narrates what happens |
-| **Sponsoring** | During the match, players spend sponsor points to send items (food, medicine, ammunition, gear) to any tribute, which affect later rounds. Players earn more points for every day their tribute survives |
+| **Sponsoring** | During the match, players spend sponsor points to send items (food, water, medicine, ammunition) to any tribute. **Gifts are used the moment they land**, so the player sees the effect in the promised round. Ammunition can only be sent to a tribute holding the matching weapon. Players earn more points for every day their tribute survives |
 | **After elimination** | A player whose tribute dies can keep watching and sponsoring, or leave |
 | **Results** | Final placements, the player's own result, key moments, and every tribute's personality prompt revealed |
 
@@ -131,11 +131,11 @@ I design these myself in `/arch`. They're listed here so the assistant knows wha
 |---|---|
 | `Stats` | The six attributes, the 36-point budget and the maximum of 10 per stat |
 | `Weapon` | Modifiers against stats and situations, plus **ammunition** (bow, throwing knives) |
-| `Item` | Food, water, medicine, ammunition and gear, from foraging or sponsors |
+| `Item` | Sponsor gifts (ration pack, water flask, medkit, arrows, throwing knives) are applied on arrival and never stored. Ammunition adds to the matching weapon's count. Inventories hold only weapons, which is what a killer loots |
 | `Tribute` | Identity, cosmetic origin, **owner (a player or AI)**, stats, weapon, personality, health, hunger, inventory, memory, alliances, status |
 | `Zone` / `Map` | The zone graph and its resources, **cover**, hazards and adjacency |
 | `Hazard` | Map-wide (lower damage to every tribute) or zone (higher damage to one zone), and when it triggers |
-| `Action` | The fixed menu: `forage`, `hunt(target)`, `hide`, `rest`, `move_to(zone)`, `propose_alliance(target)`, `betray(ally)`, `flee`, `use_item(item)`. |
+| `Action` | The fixed menu: `forage`, `hunt(target)`, `hide`, `rest`, `move_to(zone)`, `propose_alliance(target)`, `betray(ally)`, `flee`. |
 | `SponsorGift` | Who sent what to whom, and which round it applies to |
 | `GameEvent` | Everything that happened in a round, with a **sequence number**, in a form both the narrator and the client can use |
 | `GameState` | The full truth at a round boundary |

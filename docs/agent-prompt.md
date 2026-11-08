@@ -50,7 +50,6 @@ The action menu:
 { type: "hunt", targetId: string }
 { type: "betray", allyId: string }
 { type: "move_to", zoneId: string }
-{ type: "use_item", itemId: string }
 { type: "propose_alliance", tributeId: string }
 { type: "accept_alliance", proposerId: string }
 
@@ -120,7 +119,6 @@ The target must be in this tribute's perception snapshot
 hunt: the target must be spotted by the Tribute
 betray: must be in alliance with the Tribute (ally), and the ally must be spotted
 move_to: the zone must be adjacent to the current zone
-use_item: the item must be in the Tributes inventory
 
 fallback: in danger → move to the safest adjacent zone; starving and food is here → forage; otherwise → rest (If two zones tie for safest, the seeded RNG breaks the tie)
 

@@ -130,8 +130,7 @@ export type Action =
   | { type: "betray"; allyId: TributeId }
   | { type: "propose_alliance"; tributeId: TributeId }
   | { type: "accept_alliance"; proposerId: TributeId }
-  | { type: "move_to"; zoneId: ZoneId }
-  | { type: "use_item"; itemId: string };
+  | { type: "move_to"; zoneId: ZoneId };
 
 // Engine input (not an Action): applied at the first round that hasn't been simulated yet
 export type SponsorGift = {

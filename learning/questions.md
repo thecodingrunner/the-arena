@@ -44,3 +44,5 @@ Keep unresolved questions concise. Add a date or context when it helps.
 - **Evidence to check:**
 - **Status:** unresolved
 
+## 2026-11-08: if we no longer have use_item, do we really need sponsor items in the InventoryItem union or can we remove it?
+
