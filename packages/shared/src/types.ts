@@ -283,3 +283,27 @@ export type GameEvent =
   | ZoneWaterChanged
   | ZoneFlooded
   | ZoneClosed;
+
+export type MatchResults = {
+  matchId: MatchId;
+  rounds: number;
+  winnerId: TributeId;
+  placements: TributeId[];
+} & (
+  | { kind: "lastStanding" }
+  | {
+      kind: "tiebreak";
+      cause: "draw" | "timeout";
+      tiedIds: TributeId[];
+      rule: "hp" | "kills" | "roll";
+    }
+);
+
+export type Perception = {
+  round: number;
+  self: { tributeId: TributeId; hp: number; hunger: number; stats: Stats; position: ZoneId; inventory: InventoryItem[] };
+  zone: { zoneId: ZoneId; food: number; water: number; cover: number };
+  adjacentZoneIds: ZoneId[];              // → valid move_to targets
+  visibleTributes: { tributeId: TributeId; name: string, hidLastRound: boolean }[]; // same zone, alive, hidLastRound → valid hunt targets
+  // later (step 9): recent events this tribute witnessed, memory, relationship tags
+};

@@ -28,3 +28,11 @@
 
 ### Tuning
 All numbers above are named constants, to be tuned during playtesting (step 12).
+
+### Ending rules
+A match comes to an end when the maximum number of rounds is reached, or the number of tributes left is less than two. If there is a tiebreak, the winner will be decided by the following chain:
+hp at start of round -> kills -> endurance roll (with a seeded shuffle under it so ties can't happen)
+When the match comes to an end, the MatchEnded event is emitted with the MatchEnded data
+
+### Context snapshot and perception
+the tribute should know: everything the tribute could know in the game world, and nothing it couldn't
