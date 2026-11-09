@@ -1601,7 +1601,7 @@ describe("resolveRound", () => {
     expect(damageDone).toBe(28);
   });
 
-  test("only one miss event is emitted per tribute", () => {
+  test("a hunt emits exactly one TributeAttacked, whether it hits or misses", () => {
     const actions: RoundActions = {
       t1: { type: "hunt", targetId: "t2" },
       t2: { type: "rest" },
@@ -1630,7 +1630,7 @@ describe("resolveRound", () => {
         e.attackerId === "t1",
       );
 
-      expect(t1Attacks.length).toEqual(1);
+      expect(t1Attacks).toHaveLength(1);
 
       if (t1Attacks[0]?.outcome === "missed") {
         misses++;
