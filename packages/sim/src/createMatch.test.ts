@@ -157,6 +157,24 @@ describe("createMatch", () => {
     expect(placements.size).toBeGreaterThan(1);
   });
 
+  test("starting ammo comes from the definition: bow 3, throwing knifes 6, spear null", () => {
+    const match = createMatch(makeConfig({
+      tributes: [
+        makeTribute({ tributeId: "t1", startingWeaponDefId: "bow" }),
+        makeTribute({ tributeId: "t2", startingWeaponDefId: "throwing_knives" }),
+        makeTribute({ tributeId: "t3", startingWeaponDefId: "spear" }),
+      ]
+    }));
+
+    const tribute1Weapon = match.tributes[0]!.inventory.find((w) => w.kind === "weapon");
+    const tribute2Weapon = match.tributes[1]!.inventory.find((w) => w.kind === "weapon");
+    const tribute3Weapon = match.tributes[2]!.inventory.find((w) => w.kind === "weapon");
+
+    expect(tribute1Weapon!.ammunition).toBe(3);
+    expect(tribute2Weapon!.ammunition).toBe(6);
+    expect(tribute3Weapon!.ammunition).toBe(null);
+  })
+
   //Determinism
   test("the same config gives the same GameState", () => {
     const matchConfig = makeConfig();

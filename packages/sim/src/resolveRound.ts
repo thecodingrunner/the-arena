@@ -505,8 +505,7 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
   }
 
   if (weaponInstance && weaponInstance.ammunition !== null) {
-    if (weaponInstance && weaponInstance.ammunition !== null)
-      weaponInstance.ammunition--;
+    weaponInstance.ammunition--;
 
     emitEvent({
       type: "TributeAmmunitionChanged",
