@@ -51,3 +51,30 @@ REAL MODEL: should write tests before implementing engine logic, and derive valu
 MISSED SIGNAL: missed the incorrect logic since the test was passing, but hunger was decreasing on moving zones
 ROOT CONCEPT: order of writting tests and implementation
 PREVENTION: derive expected values from round-execution.md; writing tests first makes that easier, but doesn't guarantee it.
+
+## 2026-11-09: Duplicated loot
+
+BUG: After the victim died, the looted weapon stayed in the victim's inventory as well
+ORIGINAL MODEL: I believed my loot test proved the weapon was transferred
+REAL MODEL: It only proved the killer had the weapon. A transfer has two sides, add and remove, and my test checked only one. 
+MISSED SIGNAL: Had not checked the victims inventory to check that it was empty in the test.
+ROOT CONCEPT: A transfer is two changes, not one.
+PREVENTION: Ask yourself whether that is the only instance, and whenever passing a intance from one owner to another, make sure the original is removed. Should only have one unique instance at any one point, otherwise this duplication will cause indentification issues down the line. For a transfer, assert both sides.
+
+## 2026-11-09: Wrong bow: chooseWeapon picked the empty bow, so ammo went to -1
+
+BUG: chooseWeapon picked the empty bow, so ammo went to -1. The chooseWeapon function was finding weaponInstances by their definitionIds rather than itemIds. Therefore if two bows existed, it was selecting the empty bow and attempting to use it, leading to ammo of -1. 
+ORIGINAL MODEL: I believed the chooseWeapon function was finding the correct weapon instance.
+REAL MODEL: It was only selecting the weapon definition. And was leading to the incorrect weapon being selected. 
+MISSED SIGNAL: Tests were passing, since a test with two bows in one inventory asserting the ammunition quantity/event after usage had not been added, so it went unnoticed. 
+ROOT CONCEPT: Identity vs Kind. itemId says which object, definitionId says what sort. 
+PREVENTION: Understanding that there may be more than one instance of the same weapon type. Make sure the desired instance is being selected, rather than any of the same type. Add appropriate tests. Replaced the selection identifier with the itemId, so the specific instance, was found. Also returned the instance and definition from the chooseWeapon function rather than just the id. Ensure that specific instance identifiers are being used rather than general definition ids. 
+
+## 2026-11-09: Double miss: a miss emitted two TributeAttacked events
+
+BUG: a miss emitted two TributeAttacked events, since hit/miss events were being emitted at the start, and another miss event was being emitted in the else part of the outcome === "hit" if statement. Had added a generic attack event with a tertiary statement for the outcome, whilst forgetting to remove the previous miss attack event emit.
+ORIGINAL MODEL: I believed the resolveHunt was only emitting one attack missed event. 
+REAL MODEL: The attack missed event was being emitted twice in the resolveHunt function. 
+MISSED SIGNAL: Had not set up a test for asserting the number of attack events, so the tests were all passing. 
+ROOT CONCEPT: the leftover else was isolated carelessness. Events can be emitted an undesirable number of times, so emit quantity must be tested for. 
+PREVENTION: When adding a generic attack event emit, make sure the previous ones are removed. Ensure that only one attack event is emitted per hunt. Ensure only one attack event is emitted per hunt. Every test asserted that something was present, usually with findEvent, which returns the first match. None asserted what was absent, or how many. For "exactly one", use filterEvents(...).length or the exact slice approach, not findEvent.
