@@ -43,7 +43,7 @@ export type TributeState = {
 export type Tribute = TributeConfig & TributeState;
 
 export type WeaponDefinition = {
-  weaponDefinitionId: string;
+  weaponDefinitionId: string | null;
   name: string;
   power: number;
   foragingBonus: number;
@@ -55,7 +55,7 @@ export type WeaponDefinition = {
 export type WeaponInstance = {
   kind: "weapon";
   itemId: string;
-  definitionId: string; // weaponDefinitionId
+  definitionId: string | null; // weaponDefinitionId
   ammunition: number | null;
 };
 
@@ -203,7 +203,7 @@ export type TributeAttacked = EventBase & {
   attackerId: TributeId;
   victimId: TributeId;
   outcome: "hit" | "missed" | "notFound" | "targetGone" | "pinnedDown";
-  weaponDefinitionId: string;
+  weaponDefinitionId: string | null;
 };
 
 export type TributeAmmunitionChanged = EventBase & {

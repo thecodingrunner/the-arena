@@ -6,6 +6,7 @@ import {
   type GameEvent,
   type GameState,
   type Tribute,
+  type TributeAttacked,
   type TributeId,
   type WeaponDefinition,
   type WeaponInstance,
@@ -371,21 +372,23 @@ function resolveMoveTo(ctx: Ctx, tribute: Tribute, targetZoneId: string) {
 function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
   const { emitEvent, copiedGameState, rng, pinned } = ctx;
 
-  const targetTribute = copiedGameState.tributes.find(
-    (t) => t.tributeId === targetTributeId,
-  );
-
-  if (pinned.has(tribute.tributeId)) {
+  function emitAttack(
+    outcome: TributeAttacked["outcome"],
+    weaponDefinitionId: TributeAttacked["weaponDefinitionId"],
+  ) {
     emitEvent({
       type: "TributeAttacked",
       attackerId: tribute.tributeId,
       victimId: targetTributeId,
-      outcome: "pinnedDown",
+      outcome,
       location: tribute.position,
-      weaponDefinitionId: "",
+      weaponDefinitionId,
     });
-    return;
   }
+
+  const targetTribute = copiedGameState.tributes.find(
+    (t) => t.tributeId === targetTributeId,
+  );
 
   if (targetTribute === undefined) {
     throw new Error(
@@ -393,18 +396,20 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
     );
   }
 
+  if (targetTribute.tributeId === tribute.tributeId) {
+    throw new Error("a tribute can't hunt themself");
+  }
+
+  if (pinned.has(tribute.tributeId)) {
+    emitAttack("pinnedDown", null);
+    return;
+  }
+
   if (
     targetTribute.alive === false ||
     targetTribute.position !== tribute.position
   ) {
-    emitEvent({
-      type: "TributeAttacked",
-      attackerId: tribute.tributeId,
-      victimId: targetTributeId,
-      outcome: "targetGone",
-      location: tribute.position,
-      weaponDefinitionId: "",
-    });
+    emitAttack("targetGone", null);
     return;
   }
 
@@ -414,27 +419,30 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
       tribute.stats.intelligence + rng.int(1, SPOTTING_DIE);
 
     if (!spotted) {
-      emitEvent({
-        type: "TributeAttacked",
-        attackerId: tribute.tributeId,
-        victimId: targetTributeId,
-        outcome: "notFound",
-        location: tribute.position,
-        weaponDefinitionId: "",
-      });
+      emitAttack("notFound", null);
       return;
     }
   }
 
-  const weaponId = chooseWeapon(tribute);
-  const weaponInstance = tribute.inventory.find(
-    (i) => i.definitionId === weaponId,
-  ) as WeaponInstance | undefined;
-  const weaponDefinition = weaponDefinitions.find(
-    (d) => d.weaponDefinitionId === weaponId,
-  )!;
+  const { instance: weaponInstance, definition: weaponDefinition } =
+    chooseWeapon(tribute);
 
   const hit = rng.chance(hitChance(tribute, targetTribute, weaponDefinition));
+
+  emitAttack(hit ? "hit" : "missed", weaponDefinition.weaponDefinitionId);
+
+  if (weaponInstance && weaponInstance.ammunition !== null) {
+    weaponInstance.ammunition--;
+
+    emitEvent({
+      type: "TributeAmmunitionChanged",
+      tributeId: tribute.tributeId,
+      itemId: weaponInstance.itemId,
+      delta: -1,
+      ammunition: weaponInstance.ammunition,
+      location: tribute.position,
+    });
+  }
 
   if (hit) {
     const damageDone = damage(tribute, targetTribute, weaponDefinition);
@@ -442,15 +450,6 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
     const newHealth = Math.max(0, targetTribute.hp - damageDone);
     const delta = newHealth - targetTribute.hp;
     targetTribute.hp = newHealth;
-
-    emitEvent({
-      type: "TributeAttacked",
-      attackerId: tribute.tributeId,
-      victimId: targetTributeId,
-      outcome: "hit",
-      location: tribute.position,
-      weaponDefinitionId: weaponId,
-    });
 
     emitEvent({
       type: "TributeHealthChanged",
@@ -488,33 +487,9 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
         });
       }
     }
-    if (
-      weaponDefinitions.find((d) => d.weaponDefinitionId === weaponId)?.ranged
-    ) {
+    if (weaponDefinition.ranged) {
       pinned.add(targetTributeId);
     }
-  } else {
-    emitEvent({
-      type: "TributeAttacked",
-      attackerId: tribute.tributeId,
-      victimId: targetTributeId,
-      outcome: "missed",
-      location: tribute.position,
-      weaponDefinitionId: weaponId,
-    });
-  }
-
-  if (weaponInstance && weaponInstance.ammunition !== null) {
-    weaponInstance.ammunition--;
-
-    emitEvent({
-      type: "TributeAmmunitionChanged",
-      tributeId: tribute.tributeId,
-      itemId: weaponInstance.itemId,
-      delta: -1,
-      ammunition: weaponInstance.ammunition,
-      location: tribute.position,
-    });
   }
 }
 
@@ -528,7 +503,10 @@ function resolveHide(ctx: Ctx, tribute: Tribute) {
   });
 }
 
-function chooseWeapon(tribute: Tribute): string {
+function chooseWeapon(tribute: Tribute): {
+  instance: WeaponInstance | null;
+  definition: WeaponDefinition;
+} {
   const weapons = tribute.inventory.filter(
     (i) => i.kind === "weapon" && i.ammunition !== 0,
   ) as WeaponInstance[];
@@ -550,7 +528,22 @@ function chooseWeapon(tribute: Tribute): string {
     return i2Damage - i1Damage;
   });
 
-  return weapons[0]?.definitionId ?? "unarmed";
+  const weaponInstance = weapons[0];
+
+  if (!weaponInstance) {
+    return {
+      instance: null,
+      definition: weaponDefinitions.find(
+        (d) => d.weaponDefinitionId === "unarmed",
+      )!,
+    };
+  }
+
+  const weaponDefinition = weaponDefinitions.find(
+    (d) => d.weaponDefinitionId === weaponInstance.definitionId,
+  )!;
+
+  return { instance: weaponInstance, definition: weaponDefinition };
 }
 
 export function hitChance(
