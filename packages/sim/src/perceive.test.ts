@@ -22,7 +22,7 @@ describe("perceive", () => {
     before.tributes[1]!.position = "forest";
     before.tributes[2]!.position = "centre";
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     expect(perception.visibleTributes).toHaveLength(1);
     expect(perception.visibleTributes[0]!.tributeId).toEqual("t2");
@@ -40,7 +40,7 @@ describe("perceive", () => {
     before.tributes[0]!.position = "forest";
     before.tributes[1]!.position = "forest";
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     expect(perception.visibleTributes.map((t) => t.tributeId)).toContain("t2");
     expect(JSON.stringify(perception)).not.toContain("SECRET-PROMPT-t2");
@@ -51,7 +51,7 @@ describe("perceive", () => {
 
     before.tributes[0]!.position = "forest";
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     expect(perception.adjacentZoneIds).toHaveLength(2);
     expect(perception.adjacentZoneIds).toContain("centre");
@@ -68,7 +68,7 @@ describe("perceive", () => {
     before.tributes[2]!.position = "centre";
     before.tributes[1]!.hiding = true;
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     expect(perception.visibleTributes).toHaveLength(1);
     expect(perception.visibleTributes[0]!.tributeId).toEqual("t2");
@@ -83,7 +83,7 @@ describe("perceive", () => {
     before.tributes[1]!.hiding = false;
     before.tributes[2]!.position = "centre";
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     expect(perception.visibleTributes).toHaveLength(1);
     expect(perception.visibleTributes[0]!.tributeId).toEqual("t2");
@@ -95,7 +95,7 @@ describe("perceive", () => {
 
     before.round = 7;
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     expect(perception.round).toBe(7);
   });
@@ -107,7 +107,7 @@ describe("perceive", () => {
     before.tributes[1]!.position = "forest";
     before.tributes[2]!.position = "centre";
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     expect(perception.visibleTributes).toHaveLength(1);
     expect(perception.visibleTributes[0]!.tributeId).toEqual("t2");
@@ -126,7 +126,7 @@ describe("perceive", () => {
     before.tributes[2]!.position = "forest";
     before.tributes[2]!.alive = true;
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     expect(perception.visibleTributes).toHaveLength(1);
     expect(perception.visibleTributes[0]!.tributeId).toEqual("t3");
@@ -139,7 +139,7 @@ describe("perceive", () => {
     const before = createMatch(makeConfig({ seed: 1 }));
     const snapshot = structuredClone(before);
 
-    perceive(before, before.tributes[0]!);
+    perceive(before, before.tributes[0]!.tributeId);
 
     expect(before).toEqual(snapshot);
   });
@@ -147,7 +147,7 @@ describe("perceive", () => {
   test("the perception shot tribute contains the same stats, hp, hunger, positon, tributeId and inventory as the tribute", () => {
     const before = createMatch(makeConfig({ seed: 1 }));
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     expect(perception.self.tributeId).toEqual(before.tributes[0]!.tributeId);
     expect(perception.self.hp).toEqual(before.tributes[0]!.hp);
@@ -164,7 +164,7 @@ describe("perceive", () => {
       (z) => z.zoneId === before.tributes[0]!.position,
     )!;
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     expect(perception.zone.zoneId).toEqual(zone.zoneId);
     expect(perception.zone.food).toEqual(zone.food);
@@ -186,7 +186,7 @@ describe("perceive", () => {
 
     const snapshot = structuredClone(before);
 
-    const perception = perceive(before, before.tributes[0]!);
+    const perception = perceive(before, before.tributes[0]!.tributeId);
 
     perception.self.stats.strength = 0;
     (perception.self.inventory[0]! as WeaponInstance).ammunition = 0;

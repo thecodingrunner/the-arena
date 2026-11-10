@@ -2,10 +2,15 @@ import {
   arenaDefinitions,
   type GameState,
   type Perception,
-  type Tribute,
+  type TributeId,
 } from "@arena/shared";
 
-export function perceive(state: GameState, tribute: Tribute): Perception {
+export function perceive(state: GameState, tributeId: TributeId): Perception {
+  const tribute = state.tributes.find((t) => t.tributeId === tributeId);
+
+  if (!tribute)
+    throw new Error(`tribute ${tributeId} is not in state.tributes`);
+
   const zone = state.zones.find((z) => z.zoneId === tribute.position);
 
   if (!zone) throw new Error(`zone ${tribute.position} is not in state.zones`);
