@@ -301,9 +301,29 @@ export type MatchResults = {
 
 export type Perception = {
   round: number;
-  self: { tributeId: TributeId; hp: number; hunger: number; stats: Stats; position: ZoneId; inventory: InventoryItem[] };
+  self: {
+    tributeId: TributeId;
+    hp: number;
+    hunger: number;
+    stats: Stats;
+    position: ZoneId;
+    inventory: InventoryItem[];
+  };
   zone: { zoneId: ZoneId; food: number; water: number; cover: number };
-  adjacentZoneIds: ZoneId[];              // → valid move_to targets
-  visibleTributes: { tributeId: TributeId; name: string, hidLastRound: boolean }[]; // same zone, alive, hidLastRound → valid hunt targets
+  adjacentZoneIds: ZoneId[]; // → valid move_to targets
+  visibleTributes: {
+    tributeId: TributeId;
+    name: string;
+    hidLastRound: boolean;
+  }[]; // same zone, alive, hidLastRound → valid hunt targets
   // later (step 9): recent events this tribute witnessed, memory, relationship tags
+};
+
+export type Rng = {
+  next: () => number;
+  int: (min: number, max: number) => number,
+  chance: (p: number) => boolean,
+  pick: <T>(arr: T[]) => T,
+  shuffle: <T>(arr: T[]) => T[],
+  getState: () => number,
 };

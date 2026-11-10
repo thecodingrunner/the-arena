@@ -1,4 +1,6 @@
-export function createRng(seed: number) {
+import type { Rng } from "@arena/shared";
+
+export function createRng(seed: number): Rng {
   // Reject non-finite seeds, because ±Infinity makes the state stuck and turns the RNG into a constant.
   if (!Number.isFinite(seed))
     throw new Error("The seed needs to be a valid number");
@@ -38,7 +40,7 @@ function mulberry32(seed: number) {
   return { generator, getState };
 }
 
-function int(min: number, max: number, generator: () => number) {
+function int(min: number, max: number, generator: () => number): number {
   if (!Number.isInteger(min) || !Number.isInteger(max))
     throw new Error("min and max need to be whole numbers");
   if (min > max) throw new Error("min needs to be less than or equal to max");
@@ -66,5 +68,3 @@ function shuffle<T>(arr: T[], generator: () => number): T[] {
   }
   return arrCopy;
 }
-
-export type Rng = ReturnType<typeof createRng>;

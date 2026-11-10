@@ -24,7 +24,6 @@ Perceive
 - dead tributes arent in visibleTributes
 - perceive doesn't modify the state
 
-
 The random agent
 - hunt target is in visibleTributes
 - a move_to target is in adjacentZoneIds

@@ -5,6 +5,7 @@ import {
   type ArenaDefinition,
   type GameEvent,
   type GameState,
+  type Rng,
   type Tribute,
   type TributeAttacked,
   type TributeId,
@@ -12,7 +13,7 @@ import {
   type WeaponInstance,
   type Zone,
 } from "@arena/shared";
-import { createRng, type Rng } from "./rng";
+import { createRng } from "./rng";
 import {
   AGILITY_DODGE_BONUS,
   BASE_HIT_RATE,
