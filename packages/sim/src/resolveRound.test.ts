@@ -10,14 +10,11 @@ import { createMatch } from "./createMatch";
 import { damage, hitChance, resolveRound } from "./resolveRound";
 import {
   weaponDefinitions,
-  type Action,
   type GameState,
-  type TributeId,
+  type RoundActions,
   type WeaponDefinition,
   type WeaponInstance,
 } from "@arena/shared";
-
-type RoundActions = Record<TributeId, Action>;
 
 describe("resolveRound", () => {
   test("does not modify the input state", () => {
@@ -605,6 +602,22 @@ describe("resolveRound", () => {
 
     expect(() => resolveRound(before, moveActions)).toThrow(
       "nowhere does not exist, so tribute t1 cannot move there",
+    );
+  });
+
+  test("move_to: a tribute cannot select to move to its current zone", () => {
+    const moveActions: RoundActions = {
+      t1: { type: "move_to", zoneId: "centre" },
+      t2: { type: "forage" },
+      t3: { type: "forage" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.tributes[0]!.hunger = 50;
+    before.tributes[0]!.position = "centre";
+
+    expect(() => resolveRound(before, moveActions)).toThrow(
+      "t1 can not move from centre to centre",
     );
   });
 
@@ -2103,7 +2116,6 @@ describe("resolveRound", () => {
     const { state: after } = resolveRound(before, actions);
 
     expect(after.tributes[0]!.diedInRound).toBe(after.round);
-
   });
 
   test("a hunger death doesn't give anyone a kill", () => {
@@ -2126,7 +2138,7 @@ describe("resolveRound", () => {
     expect(after.tributes[0]!.kills).toBe(before.tributes[0]!.kills);
     expect(after.tributes[1]!.kills).toBe(before.tributes[1]!.kills);
     expect(after.tributes[2]!.kills).toBe(before.tributes[2]!.kills);
-  })
+  });
 
   // Events
   // - each outcome emits the right events in the right order

@@ -335,3 +335,5 @@ export type Rng = {
   shuffle: <T>(arr: T[]) => T[];
   getState: () => number;
 };
+
+export type RoundActions = Record<TributeId, Action>;
