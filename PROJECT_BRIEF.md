@@ -274,7 +274,7 @@ Nginx works per *request and connection*, and once a WebSocket is open, messages
 - **Cost per match:** tributes × rounds × calls, at both 8 and 12–24 tributes. What is the per-match budget, and which model gives acceptable quality at that cost?
 - **LLM failure handling:** timeouts, retries, and when to give up and use the fallback action
 - **Match pacing:** how many rounds, how arena events compress the late game, and how long a match lasts in real time
-- **Solo match length:** how long an 8-tribute match should last in real time
+- **Solo match length:** an 8-tribute match should last roughly 10 minutes, 30-40 rounds, at 15-20 seconds per round. 
 - **Zone closures:** how many tributes alive per open zone should trigger a closure, and whether that value works at both 8 and 12–24 tributes
 - **Glass Flats at 24 tributes:** whether 5 zones is too crowded, or whether that suits a fast, open map
 - **Hazard values:** damage for map-wide and zone hazards, how often they trigger, and whether some only trigger by day or night

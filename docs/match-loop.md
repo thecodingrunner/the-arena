@@ -49,5 +49,7 @@ The loop
 - the same seed with recorded decisions produces an identical event log
 - the game runs to completion, exactly one MatchEnded event emitted, never thows, never goes past MAX_ROUNDS
 - exactly one action per living tribute, and none for dead tributes
+- every random match runs to completion at 8 to 24 tributes
+- the replay gives an identical log
 
 function agent(perception: Perception, agentRng: Rng): Action {}
