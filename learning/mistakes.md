@@ -78,3 +78,21 @@ REAL MODEL: The attack missed event was being emitted twice in the resolveHunt f
 MISSED SIGNAL: Had not set up a test for asserting the number of attack events, so the tests were all passing. 
 ROOT CONCEPT: the leftover else was isolated carelessness. Events can be emitted an undesirable number of times, so emit quantity must be tested for. 
 PREVENTION: When adding a generic attack event emit, make sure the previous ones are removed. Ensure that only one attack event is emitted per hunt. Ensure only one attack event is emitted per hunt. Every test asserted that something was present, usually with findEvent, which returns the first match. None asserted what was absent, or how many. For "exactly one", use filterEvents(...).length or the exact slice approach, not findEvent.
+
+## 2026-11-10: out-of-date aliveTributes bug
+
+BUG: the match loop was attempting to resolve rounds (and apply actions) on tributes from a previous state (the first state), leading to an error being thrown on a move_to action
+ORIGINAL MODEL: I thought the tributes from the current state were being used in the perceive function
+REAL MODEL: the tributes from the first state we're being passed as an argument, and each agent was given a perception based on its round-0 position, chose a move that was valid from there, and the resolveRound then rejected it against where the tribute really was, what the agent saw and what was true had drifted apart
+MISSED SIGNAL: the test error (move from centre to centre), meant the perception and the state disagree
+ROOT CONCEPT: state updates create new objects every round, so any reference held across rounds goes out of date (repeated pattern: getState snapshot - line 35, and shallow-copy issues)
+PREVENTION: ensured that the tributes were being updated within the loop, rather than instantiated once outside it. Also updated the perceive function so that it takes a tributeId and accessed the tribute from the state rather than passing a full tribute.
+
+## 2026-11-10: stale watch-mode error
+
+BUG: the tests failed in watch-mode after changing the perceive function, even though the function was correct
+ORIGINAL MODEL: I thought the function was incorrect
+REAL MODEL: The watch-mode tests were using a previous version of the perceive function, causing it to fail
+MISSED SIGNAL: the error message didn't match the line pointed at
+ROOT CONCEPT: the code may be stale in watch mode (missing knowledge about tooling)
+PREVENTION: After changing one package, restart the watcher in any other package that uses it
