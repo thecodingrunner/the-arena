@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { createRng, type Rng } from "./rng";
+import { createRng } from "./rng";
+import type { Rng } from "@arena/shared";
 
 describe("createRng", () => {
   test("the same seed produces the same sequence", () => {

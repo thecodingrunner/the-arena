@@ -1,5 +1,5 @@
 export const MAX_HP = 100;
-export const STARTING_HP = MAX_HP;   // tributes start at full health
+export const STARTING_HP = MAX_HP; // tributes start at full health
 export const MAX_HUNGER = 100;
 export const STARTING_HUNGER = 0;
 export const INITIATIVE_DIE = 5;
@@ -11,7 +11,7 @@ export const HUNGER_VALUE = { food: 30, water: 15 } as const;
 export const HEALTH_PER_REST = 10;
 export const HUNGER_PER_MOVE_COST = 3;
 export const HUNGER_TICK = 10;
-export const HUNGER_HEALTH_COST = 10;    // hunger costs health
+export const HUNGER_HEALTH_COST = 10; // hunger costs health
 export const WEAPON_DAMAGE_BONUS = 2; // stat adds 2–20, so weapon power (20–28) stays the main term
 export const ENDURANCE_TOUGHNESS_BONUS = 0.5;
 export const BASE_HIT_RATE = 0.2;

@@ -76,6 +76,8 @@ export function createMatch({
       ],
       memory: [],
       hiding: false,
+      kills: 0,
+      diedInRound: null,
     };
 
     nextItemId++;
@@ -93,5 +95,6 @@ export function createMatch({
     rngState: rng.getState(),
     nextItemId: nextItemId,
     arenaId: arenaId,
+    result: null,
   };
 }

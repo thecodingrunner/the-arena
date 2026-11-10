@@ -948,8 +948,10 @@ describe("resolveRound", () => {
       t3: { type: "rest" },
     };
 
-    expect(() => resolveRound(createMatch(makeConfig({ seed: 0 })), actions)).toThrow("a tribute can't hunt themself");
-  })
+    expect(() =>
+      resolveRound(createMatch(makeConfig({ seed: 0 })), actions),
+    ).toThrow("a tribute can't hunt themself");
+  });
 
   // Weapon
   // - a bow with 0 ammo is skipped by chooseWeapon
@@ -1626,8 +1628,10 @@ describe("resolveRound", () => {
 
       const { events } = resolveRound(before, actions);
 
-      const t1Attacks = filterEvents(events, "TributeAttacked", (e) =>
-        e.attackerId === "t1",
+      const t1Attacks = filterEvents(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
       );
 
       expect(t1Attacks).toHaveLength(1);
@@ -1986,6 +1990,143 @@ describe("resolveRound", () => {
 
     expect(deadlyAttacks).toBeGreaterThan(0);
   });
+
+  test("a kill adds 1 to the killer's kills", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    let kills = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.position = "forest";
+      before.tributes[1]!.stats.agility = 1;
+      before.tributes[1]!.hp = 10;
+      before.tributes[0]!.stats.intelligence = 10;
+      before.tributes[0]!.stats.agility = 10;
+      before.tributes[0]!.stats.strength = 10;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        {
+          definitionId: "spear",
+          ammunition: null,
+          kind: "weapon",
+          itemId: "b1",
+        },
+      ];
+      before.tributes[0]!.kills = 3;
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (
+        attack?.outcome === "hit" &&
+        findEvent(events, "TributeDied", (e) => e.victimId === "t2")
+      ) {
+        kills++;
+        expect(after.tributes[0]!.kills).toBe(before.tributes[0]!.kills + 1);
+      }
+    }
+
+    expect(kills).toBeGreaterThan(0);
+  });
+
+  test("an attack death sets diedInRound", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    let kills = 0;
+
+    for (let seed = 0; seed < 20; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.tributes[1]!.position = "forest";
+      before.tributes[1]!.stats.agility = 1;
+      before.tributes[1]!.hp = 10;
+      before.tributes[0]!.stats.intelligence = 10;
+      before.tributes[0]!.stats.agility = 10;
+      before.tributes[0]!.stats.strength = 10;
+      before.tributes[0]!.position = "forest";
+      before.tributes[0]!.inventory = [
+        {
+          definitionId: "spear",
+          ammunition: null,
+          kind: "weapon",
+          itemId: "b1",
+        },
+      ];
+      before.tributes[0]!.kills = 3;
+      before.round = 6;
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+
+      if (
+        attack?.outcome === "hit" &&
+        findEvent(events, "TributeDied", (e) => e.victimId === "t2")
+      ) {
+        kills++;
+        expect(after.tributes[1]!.diedInRound).toBe(after.round);
+      }
+    }
+
+    expect(kills).toBeGreaterThan(0);
+  });
+
+  test("a hunger death sets diedInRound", () => {
+    const actions: RoundActions = {
+      t1: { type: "hide" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig({ seed: 0 }));
+    before.tributes[0]!.hp = 1;
+    before.tributes[0]!.hunger = 100;
+    before.round = 6;
+
+    const { state: after } = resolveRound(before, actions);
+
+    expect(after.tributes[0]!.diedInRound).toBe(after.round);
+
+  });
+
+  test("a hunger death doesn't give anyone a kill", () => {
+    const actions: RoundActions = {
+      t1: { type: "hide" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig({ seed: 0 }));
+    before.tributes[0]!.hp = 1;
+    before.tributes[0]!.hunger = 100;
+    before.tributes[0]!.kills = 1;
+    before.tributes[1]!.kills = 3;
+    before.tributes[2]!.kills = 4;
+    before.round = 6;
+
+    const { state: after } = resolveRound(before, actions);
+
+    expect(after.tributes[0]!.kills).toBe(before.tributes[0]!.kills);
+    expect(after.tributes[1]!.kills).toBe(before.tributes[1]!.kills);
+    expect(after.tributes[2]!.kills).toBe(before.tributes[2]!.kills);
+  })
 
   // Events
   // - each outcome emits the right events in the right order

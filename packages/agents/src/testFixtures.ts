@@ -33,7 +33,9 @@ export function makePerception(
     },
     zone: { zoneId: "forest", food: 3, water: 1, cover: 2 },
     adjacentZoneIds: ["centre", "ridge"],
-    visibleTributes: [{ tributeId: "t2", name: "Tribute Two", hidLastRound: false }],
+    visibleTributes: [
+      { tributeId: "t2", name: "Tribute Two", hidLastRound: false },
+    ],
     ...overrides,
   };
 }

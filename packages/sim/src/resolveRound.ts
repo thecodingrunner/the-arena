@@ -38,6 +38,7 @@ import {
   WEAPON_DAMAGE_BONUS,
   WEAPON_HIT_RATE_BONUS,
 } from "./rules";
+import { checkMatchEnd } from "./matchEnd";
 
 type DistributiveOmit<T, K extends keyof T> = T extends unknown
   ? Omit<T, K>
@@ -64,6 +65,8 @@ export function resolveRound(
   state: GameState;
   events: GameEvent[];
 } {
+  if (state.result !== null) throw new Error("The match has already ended");
+
   const events = [] as GameEvent[];
 
   const tributes = state.tributes.map((tribute) => {
@@ -182,6 +185,7 @@ export function resolveRound(
       });
       if (tribute.hp <= 0) {
         tribute.alive = false;
+        tribute.diedInRound = copiedGameState.round;
 
         emitEvent({
           type: "TributeDied",
@@ -194,6 +198,27 @@ export function resolveRound(
   }
 
   copiedGameState.rngState = rng.getState();
+
+  const startHp = copiedGameState.tributes.reduce(
+    (acc, t) => ({ ...acc, [t.tributeId]: t.hp }),
+    {} as Record<TributeId, number>,
+  );
+
+  const matchEnd = checkMatchEnd(
+    copiedGameState.round,
+    startHp,
+    tributes,
+    rng,
+  );
+
+  if (matchEnd) {
+    emitEvent({
+      type: "MatchEnded",
+      result: matchEnd,
+      location: "arena",
+    });
+    copiedGameState.result = matchEnd;
+  }
 
   return {
     state: copiedGameState,
@@ -462,6 +487,9 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
 
     if (targetTribute.hp === 0) {
       targetTribute.alive = false;
+      targetTribute.diedInRound = ctx.copiedGameState.round;
+      tribute.kills++;
+
       emitEvent({
         type: "TributeDied",
         victimId: targetTributeId,

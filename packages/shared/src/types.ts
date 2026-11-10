@@ -38,6 +38,8 @@ export type TributeState = {
   memory: string[];
   inventory: InventoryItem[];
   hiding: boolean;
+  kills: number;
+  diedInRound: number | null;
 };
 
 export type Tribute = TributeConfig & TributeState;
@@ -119,6 +121,7 @@ export type GameState = {
   tributes: Tribute[];
   alliances: Alliance[]; // live here, not on Tribute: single source of truth
   zones: Zone[]; // per-match copy, since food and water change during play
+  result: MatchResults | null;
 };
 
 // Intent: what a tribute tries to do. The engine decides what actually happens.
@@ -265,6 +268,11 @@ export type ZoneClosed = EventBase & {
   zoneId: ZoneId;
 };
 
+export type MatchEnded = EventBase & {
+  type: "MatchEnded";
+  result: MatchResults;
+};
+
 export type GameEvent =
   | TributeDied
   | TributeHungerChanged
@@ -282,10 +290,10 @@ export type GameEvent =
   | ZoneFoodChanged
   | ZoneWaterChanged
   | ZoneFlooded
-  | ZoneClosed;
+  | ZoneClosed
+  | MatchEnded;
 
 export type MatchResults = {
-  matchId: MatchId;
   rounds: number;
   winnerId: TributeId;
   placements: TributeId[];
@@ -321,9 +329,9 @@ export type Perception = {
 
 export type Rng = {
   next: () => number;
-  int: (min: number, max: number) => number,
-  chance: (p: number) => boolean,
-  pick: <T>(arr: T[]) => T,
-  shuffle: <T>(arr: T[]) => T[],
-  getState: () => number,
+  int: (min: number, max: number) => number;
+  chance: (p: number) => boolean;
+  pick: <T>(arr: T[]) => T;
+  shuffle: <T>(arr: T[]) => T[];
+  getState: () => number;
 };

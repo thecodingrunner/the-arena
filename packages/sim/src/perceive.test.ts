@@ -29,14 +29,16 @@ describe("perceive", () => {
   });
 
   test("a visible tribute's personality prompt never appears in the perception", () => {
-    const before = createMatch(makeConfig({ 
+    const before = createMatch(
+      makeConfig({
         tributes: [
-            makeTribute({ tributeId: "t1" }),
-            makeTribute({ tributeId: "t2", personality: "SECRET-PROMPT-t2" }),
+          makeTribute({ tributeId: "t1" }),
+          makeTribute({ tributeId: "t2", personality: "SECRET-PROMPT-t2" }),
         ],
-     }));
-     before.tributes[0]!.position = "forest";
-     before.tributes[1]!.position = "forest";
+      }),
+    );
+    before.tributes[0]!.position = "forest";
+    before.tributes[1]!.position = "forest";
 
     const perception = perceive(before, before.tributes[0]!);
 
@@ -86,7 +88,7 @@ describe("perceive", () => {
     expect(perception.visibleTributes).toHaveLength(1);
     expect(perception.visibleTributes[0]!.tributeId).toEqual("t2");
     expect(perception.visibleTributes[0]!.hidLastRound).toBe(false);
-  })
+  });
 
   test("perceive returns a Perceive object with the correct round number", () => {
     const before = createMatch(makeConfig({ seed: 1 }));
@@ -109,7 +111,9 @@ describe("perceive", () => {
 
     expect(perception.visibleTributes).toHaveLength(1);
     expect(perception.visibleTributes[0]!.tributeId).toEqual("t2");
-    expect(perception.visibleTributes.map((t) => t.tributeId)).not.toContain("t1");
+    expect(perception.visibleTributes.map((t) => t.tributeId)).not.toContain(
+      "t1",
+    );
   });
 
   test("dead tributes arent in visibleTributes", () => {
@@ -126,7 +130,9 @@ describe("perceive", () => {
 
     expect(perception.visibleTributes).toHaveLength(1);
     expect(perception.visibleTributes[0]!.tributeId).toEqual("t3");
-    expect(perception.visibleTributes.map((t) => t.tributeId)).not.toContain("t2");
+    expect(perception.visibleTributes.map((t) => t.tributeId)).not.toContain(
+      "t2",
+    );
   });
 
   test("perceive doesn't modify the state", () => {
@@ -149,13 +155,14 @@ describe("perceive", () => {
     expect(perception.self.stats).toEqual(before.tributes[0]!.stats);
     expect(perception.self.position).toEqual(before.tributes[0]!.position);
     expect(perception.self.inventory).toEqual(before.tributes[0]!.inventory);
-
   });
 
   test("the perception shot zone contains the same zoneId, food, water and cover as the zone the tribute is currently in", () => {
     const before = createMatch(makeConfig({ seed: 1 }));
 
-    const zone = before.zones.find((z) => z.zoneId === before.tributes[0]!.position)!;
+    const zone = before.zones.find(
+      (z) => z.zoneId === before.tributes[0]!.position,
+    )!;
 
     const perception = perceive(before, before.tributes[0]!);
 
@@ -169,12 +176,12 @@ describe("perceive", () => {
     const before = createMatch(makeConfig({ seed: 1 }));
 
     before.tributes[0]!.inventory = [
-        {
-            itemId: "s1",
-            ammunition: 2,
-            kind: "weapon",
-            definitionId: "bow",
-        }
+      {
+        itemId: "s1",
+        ammunition: 2,
+        kind: "weapon",
+        definitionId: "bow",
+      },
     ];
 
     const snapshot = structuredClone(before);
@@ -182,11 +189,9 @@ describe("perceive", () => {
     const perception = perceive(before, before.tributes[0]!);
 
     perception.self.stats.strength = 0;
-    (perception.self.inventory[0]! as WeaponInstance).ammunition = 0
+    (perception.self.inventory[0]! as WeaponInstance).ammunition = 0;
     perception.zone.food = 0;
 
     expect(before).toEqual(snapshot);
   });
-
-  
 });
