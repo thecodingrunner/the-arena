@@ -68,6 +68,33 @@ export function makeConfig(overrides: Partial<MatchConfig> = {}): MatchConfig {
   };
 }
 
+// Builds n valid tributes t1…tn with default stats. Weapons cycle so a match has a mix.
+// Use for anything that needs more than makeConfig's 3: makeConfig({ tributes: makeTributes(8) })
+export function makeTributes(n: number): TributeConfig[] {
+  const weapons = ["spear", "bow", "machete", "throwing_knives", "crowbar"];
+  return Array.from({ length: n }, (_, i) =>
+    makeTribute({
+      tributeId: `t${i + 1}`,
+      name: `Tribute ${i + 1}`,
+      startingWeaponDefId: weapons[i % weapons.length]!,
+    }),
+  );
+}
+
+// Marks a tribute dead the way the engine does: hp 0, alive false, diedInRound set.
+// Keeps tests from arranging a half-dead state the engine could never produce.
+export function markDead(
+  state: GameState,
+  tributeIndex: number,
+  round: number,
+): void {
+  const tribute = state.tributes[tributeIndex];
+  if (!tribute) throw new Error(`no tribute at index ${tributeIndex}`);
+  tribute.hp = 0;
+  tribute.alive = false;
+  tribute.diedInRound = round;
+}
+
 type EventOfType<T extends GameEvent["type"]> = Extract<GameEvent, { type: T }>;
 
 // Finds the first event of a type, typed as that event. Optional filter on its fields.
