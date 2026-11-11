@@ -4,13 +4,14 @@ import type {
   GameState,
   Perception,
   RoundActions,
+  SponsorGift,
 } from "@arena/shared";
-import { perceive, resolveRound } from "@arena/sim";
-import { MAX_ROUNDS } from "@arena/sim/src/rules";
+import { MAX_ROUNDS, perceive, resolveRound } from "@arena/sim";
 
 export function runMatch(
   initialState: GameState,
   decide: (perception: Perception) => Action,
+  gifts: SponsorGift[] = [],
 ): {
   state: GameState;
   actions: RoundActions[];
@@ -35,6 +36,7 @@ export function runMatch(
     const { state: nextState, events: roundEvents } = resolveRound(
       state,
       roundActions,
+      gifts,
     );
     state = nextState;
     events.push(...roundEvents);

@@ -1,10 +1,9 @@
-import type { GameEvent, MatchConfig } from "@arena/shared";
+import type { GameEvent, MatchConfig, SponsorGift } from "@arena/shared";
 import { describe, expect, test } from "vitest";
 import { makeCliTributes } from "./cliTributes";
-import { createMatch, createRng, resolveRound } from "@arena/sim";
+import { createMatch, createRng, MAX_ROUNDS, resolveRound } from "@arena/sim";
 import { runMatch } from "./matchLoop";
 import { randomAgent } from "@arena/agents";
-import { MAX_ROUNDS } from "@arena/sim/src/rules";
 
 // The loop
 // - given an ended state, runMatch throws an error
@@ -175,4 +174,82 @@ describe("matchLoop", () => {
 
     expect(deathsOccured).toBeGreaterThan(0);
   });
+
+  // gifts
+  test.each([8, 24])(
+    "a gift injected from the CLI changes the outcome of later rounds, and never earlier ones",
+    (tributeCount) => {
+      let delivered = 0;
+      let undelivered = 0;
+
+      for (let seed = 0; seed < 20; seed++) {
+        const config: MatchConfig = {
+          matchId: "match-1",
+          arenaId: "placeholder",
+          seed: seed,
+          tributes: makeCliTributes(tributeCount),
+        };
+        const gift: SponsorGift = {
+          giftId: "g1",
+          from: null,
+          to: "t1",
+          itemDefinitionId: "medkit",
+          appliesInRound: 5,
+        };
+
+        const stateWith = createMatch(config);
+        stateWith.tributes[0]!.hp = 40;
+
+        const stateWithout = createMatch(config);
+        stateWithout.tributes[0]!.hp = 40;
+
+        const agentRngWith = createRng(seed);
+        const agentRngWithout = createRng(seed);
+        const { state: finalStateWith, events: withGift } = runMatch(
+          stateWith,
+          (p) => randomAgent(p, agentRngWith),
+          [gift],
+        );
+        const { state: finalStateWithout, events: without } = runMatch(
+          stateWithout,
+          (p) => randomAgent(p, agentRngWithout),
+        );
+
+        expect(finalStateWith.result).not.toBe(null);
+        expect(finalStateWithout.result).not.toBe(null);
+
+        expect(without.filter((e) => e.round <= 4)).toEqual(
+          withGift.filter((e) => e.round <= 4),
+        );
+        expect(without.filter((e) => e.round > 4)).not.toEqual(
+          withGift.filter((e) => e.round > 4),
+        );
+
+        const giftEvents = withGift.filter(
+          (e) =>
+            (e.type === "SponsorGiftDelivered" ||
+              e.type === "SponsorGiftUndelivered") &&
+            e.giftId === "g1",
+        );
+
+        expect(giftEvents).toHaveLength(1);
+        const outcome = giftEvents[0]!;
+        if (outcome.type === "SponsorGiftDelivered") {
+          delivered++;
+          // the next event is its health change, with a positive delta
+          const next = withGift[withGift.indexOf(outcome) + 1];
+          expect(next).toMatchObject({
+            type: "TributeHealthChanged",
+            tributeId: "t1",
+          });
+        } else {
+          undelivered++;
+          expect(outcome).toMatchObject({ reason: "recipientDead" });
+        }
+      }
+
+      expect(delivered).toBeGreaterThan(0);
+      expect(undelivered).toBeGreaterThan(0);
+    },
+  );
 });
