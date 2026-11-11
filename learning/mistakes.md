@@ -96,3 +96,12 @@ REAL MODEL: The watch-mode tests were using a previous version of the perceive f
 MISSED SIGNAL: the error message didn't match the line pointed at
 ROOT CONCEPT: the code may be stale in watch mode (missing knowledge about tooling)
 PREVENTION: After changing one package, restart the watcher in any other package that uses it
+
+## 2026-11-11: shared agentRng bug
+
+BUG: the same agentRng was being used in two different runMatch calls, leading to different event and finalState results
+ORIGINAL MODEL: I thought the agentRng was applying seperately for each runMatch call
+REAL MODEL: The agentRng was applying to the first runMatch call, then continuing from where it had left off in the first call on the second
+MISSED SIGNAL: the finalState and events returned were different, leading to a failed test
+ROOT CONCEPT: a single agentRngs state will be updated as it it used, so seperate rngs must be used for comparing finalStates and events of two different match calls
+PREVENTION: Creare two seperate rngs to pass, one per call

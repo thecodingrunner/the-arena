@@ -11,12 +11,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@arena/shared": "*"
+    "@anthropic-ai/sdk": "^1.8.0",
+    "@arena/shared": "*",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@arena/sim": "*",
     "@types/node": "^26.6.5",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5",
-    "@arena/sim": "*"
+    "vitest": "^5.0.5"
   }
 }

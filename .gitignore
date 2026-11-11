@@ -2,4 +2,8 @@ node_modules/
 dist/
 coverage/
 
-packages/sim/scratch/
+**/scratch/
+
+.env
+.env.*
+!.env.example
