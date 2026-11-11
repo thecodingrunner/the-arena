@@ -19,6 +19,7 @@ Budget: **250 hours** by 2026-12-31.
 | 2026-11-07 |   0   | 0.0         | resolveRound: hit + damage                        |       |
 | 2026-11-08 |   4   | 1.4         | resolveRound: death + safety                      |       |
 | 2026-11-09 |   8   | 3.9         | random agents arch and perceive tests             |       |
-| 2026-11-10 |   8   | 4.4         | match end and match loop                          |       |
+| 2026-11-10 |   9.5 | 5.6         | match end and match loop                          |       |
+| 2026-11-10 |   8   | 3.4         | match end and match loop                          |       |
 
 **Running total:** \_\_ / 250 hours
