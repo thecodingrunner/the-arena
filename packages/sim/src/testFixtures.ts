@@ -4,6 +4,7 @@ import type {
   GameEvent,
   GameState,
   MatchConfig,
+  SponsorGift,
   TributeConfig,
   TributeId,
   Zone,
@@ -93,6 +94,20 @@ export function markDead(
   tribute.hp = 0;
   tribute.alive = false;
   tribute.diedInRound = round;
+}
+
+// Builds a valid SponsorGift: a medkit for t1, landing in round 1
+// (createMatch starts at round 0, so the first resolveRound is round 1).
+// Override only what a test cares about: makeGift({ to: "t2", itemDefinitionId: "arrows" })
+export function makeGift(overrides: Partial<SponsorGift> = {}): SponsorGift {
+  return {
+    giftId: "g1",
+    from: null,
+    to: "t1",
+    itemDefinitionId: "medkit",
+    appliesInRound: 1,
+    ...overrides,
+  };
 }
 
 type EventOfType<T extends GameEvent["type"]> = Extract<GameEvent, { type: T }>;

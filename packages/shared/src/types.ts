@@ -61,19 +61,7 @@ export type WeaponInstance = {
   ammunition: number | null;
 };
 
-export type SponsorItemDefinition = {
-  itemDefinitionId: string;
-  name: string;
-  cost: number;
-};
-
-export type SponsorItemInstance = {
-  kind: "sponsorItem";
-  itemId: string;
-  definitionId: string; // itemDefinitionId
-};
-
-export type InventoryItem = WeaponInstance | SponsorItemInstance;
+export type InventoryItem = WeaponInstance;
 
 export type Zone = {
   zoneId: ZoneId;
@@ -143,6 +131,18 @@ export type SponsorGift = {
   itemDefinitionId: string;
   appliesInRound: number;
 };
+
+export type SponsorItemEffect = 
+  | { kind: "hunger", amount: number }
+  | { kind: "health", amount: number }
+  | { kind: "ammunition"; weaponDefinitionId: string; amount: number };
+
+export type SponsorItemDefinition = {
+  itemDefinitionId: string;
+  name: string;
+  cost: number;
+  effects: SponsorItemEffect[];
+}
 
 // Outcomes: past tense, versioned. "Changed" events carry the delta and the new value.
 type EventBase = {
@@ -223,25 +223,26 @@ export type TributeGainedItem = EventBase & {
   item: InventoryItem;
 };
 
-export type TributeUsedItem = EventBase & {
-  type: "TributeUsedItem";
-  tributeId: TributeId;
-  item: SponsorItemInstance;
+export type SponsorGiftDelivered = EventBase & {
+  type: "SponsorGiftDelivered";
+  to: TributeId;
+  senderId: PlayerId | null;
+  itemDefinitionId: string;
+  giftId: string;
+  appliedInRound: number;
 };
+export type SponsorGiftUndelivered = EventBase & {
+  type: "SponsorGiftUndelivered";
+  giftId: string;
+  to: TributeId;
+  reason: "recipientDead" | "noMatchingWeapon" | "noMatchingTribute";
+}
+
 
 export type TributeBetrayedAlliance = EventBase & {
   type: "TributeBetrayedAlliance";
   betrayerId: TributeId;
   allianceId: string;
-};
-
-export type TributeReceivedGift = EventBase & {
-  type: "TributeReceivedGift";
-  recipientId: TributeId;
-  senderId: PlayerId | null;
-  itemDefinitionId: string;
-  giftId: string;
-  appliedInRound: number;
 };
 
 export type ZoneFoodChanged = EventBase & {
@@ -284,9 +285,9 @@ export type GameEvent =
   | TributeAttacked
   | TributeAmmunitionChanged
   | TributeGainedItem
-  | TributeUsedItem
   | TributeBetrayedAlliance
-  | TributeReceivedGift
+  | SponsorGiftDelivered
+  | SponsorGiftUndelivered
   | ZoneFoodChanged
   | ZoneWaterChanged
   | ZoneFlooded

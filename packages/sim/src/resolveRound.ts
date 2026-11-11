@@ -2,16 +2,15 @@ import {
   arenaDefinitions,
   weaponDefinitions,
   type Action,
-  type ArenaDefinition,
   type GameEvent,
   type GameState,
   type Rng,
+  type SponsorGift,
   type Tribute,
   type TributeAttacked,
   type TributeId,
   type WeaponDefinition,
   type WeaponInstance,
-  type Zone,
 } from "@arena/shared";
 import { createRng } from "./rng";
 import {
@@ -39,28 +38,13 @@ import {
   WEAPON_HIT_RATE_BONUS,
 } from "./rules";
 import { checkMatchEnd } from "./matchEnd";
-
-type DistributiveOmit<T, K extends keyof T> = T extends unknown
-  ? Omit<T, K>
-  : never;
-
-type EventInput = DistributiveOmit<
-  GameEvent,
-  "matchId" | "round" | "seq" | "v"
->;
-
-type Ctx = {
-  zones: Zone[];
-  rng: Rng;
-  edges: ArenaDefinition["edges"];
-  emitEvent: (e: EventInput) => void;
-  copiedGameState: GameState;
-  pinned: Set<string>;
-};
+import type { Ctx, EventInput } from "./ctx";
+import { resolveGifts } from "./gifts";
 
 export function resolveRound(
   state: GameState,
   actions: Record<TributeId, Action>,
+  sponsorGifts?: SponsorGift[],
 ): {
   state: GameState;
   events: GameEvent[];
@@ -107,8 +91,6 @@ export function resolveRound(
 
   const rng = createRng(copiedGameState.rngState);
 
-  const orderedTributes = setInitiativeOrder(tributes, rng);
-
   const ctx = {
     zones,
     rng,
@@ -117,6 +99,15 @@ export function resolveRound(
     copiedGameState,
     pinned,
   };
+
+  const roundSponsorGifts = sponsorGifts?.filter(
+    (g) => g.appliesInRound === copiedGameState.round,
+  )
+  if (roundSponsorGifts) {
+    resolveGifts(ctx, roundSponsorGifts);
+  }
+
+  const orderedTributes = setInitiativeOrder(tributes, rng);
 
   for (const tribute of orderedTributes) {
     if (tribute.alive === false) continue;
@@ -204,12 +195,7 @@ export function resolveRound(
     {} as Record<TributeId, number>,
   );
 
-  const matchEnd = checkMatchEnd(
-    copiedGameState.round,
-    startHp,
-    tributes,
-    rng,
-  );
+  const matchEnd = checkMatchEnd(copiedGameState.round, startHp, tributes, rng);
 
   if (matchEnd) {
     emitEvent({
