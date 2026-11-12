@@ -170,7 +170,7 @@ Given t1 moves river → forest before t4 attacks t2 in river in the same round,
 - Memory is computed in sim from the starting positions plus the event log, never stored. 
 - relationshipTags are recorded per round, outside GameState, on the agent side.
 - One visibility helper is shared by perceive and witnessed.
-- Witness data never reaches the client.
+- Witness data (memory) may be sent to the client for display in tribute detail, but the client never uses it for logic. Players already see every position in the 3D view, so it isn't secret; only personality prompts are (brief §3 rule 10).
 - Facts come only from witnessed() output, never from the full log. 
 - Leave out zero values.
 
