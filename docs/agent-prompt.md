@@ -1,3 +1,214 @@
+# Current planning
+
+## Data flow
+
+Perception (with memory) + tags -> decide -> claude -> LlmResponse -> schema gate -> game gate -> convert -> AgentDecision -> runMatch
+
+schema gate table
+
+| stop_reason / error type | solution |
+| ------------------------ | -------- |
+| "refusal" | use fallback unlikely to change on retry |
+| "max_tokens" | use fallback |
+| API error / timeout | use fallbacks |
+
+## Memory: the two computed laters (recent window and long-term facts), built from witnessed(), using the shared visibility helper
+
+Recent: every event t1 witnessed in the last 3 rounds, as raw detail
+Long-term facts: for each tribute t1 has ever seen, a few derived facts:
+t4: attacked you 2× (last round 11) · last seen: river, round 11 · killed: t7
+
+
+## Types: LlmResponse (in agents, with an array of tag updates and intent) vs AgentDecision (with source)
+
+```ts
+
+type LlmResponse = {
+    intent: string;
+    action: Action;
+    tagUpdates: { tributeId: string; tags: string[] }[];
+    line: string;
+}
+
+async function runMatch(
+    state, 
+    decide: (perception: Perception, tags: Record<TributeId, Tags>) => Promise<AgentDecision>,
+    gifts
+): Promise<{ 
+    state, 
+    events, 
+    decisions: Record<TributeId, AgentDecision>[] 
+}> {
+
+}
+
+conversion return type:
+
+type AgentDecision = {
+    source: "llm" | "fallback";
+    action: Action;
+    line: string;
+    tagUpdates: Record<TributeId, Tags>;
+}
+
+type Tags = string[];
+
+```
+## Prompt layout: what's in the system prompt (shared or per tribute) vs the user message, and why, for caching
+
+If above min tokens for caching of 4,096 tokens: caching works on the prefix, so shared rules and examples first. Most likely to not hit those tokens, but will keep this order.
+
+The system prompt includes:
+- The game rules
+- Example responses
+- The tributes personality prompt
+- The tributes stats
+The user message includes:
+- The tribute perception
+- The tributes memory (two layers)
+- The tribute tags
+
+## The validation table (fixable vs fatal), including the line leak check
+
+| Field | Passes schema but wrong | Kind |
+| ----- | ----------------------- | ---- |
+| action | hunt a tribute not in visibleTributes (other zone, dead, hidden, self, or a made-up id like t99) | fatal → fallback
+| | move_to a zone not in adjacentZoneIds | fatal |
+| line | too long | fixable: truncate |
+| | line leak (normalised overlap check) | fixable: replace with a neutral line |
+| tagUpdates | the same tributeId twice | fixable: last one wins (merging conflicts with "replace") |
+| | unknown tributeId, or yourself | fixable: drop that entry |
+| | too many tags, or tags too long | fixable: truncate |
+| | tag about tribute they haven't seen | fixable: drop that entry |
+
+## The fallback as an ordered rule list
+
+```ts
+if (hunger >= FALLBACK_FORAGE_HUNGER && (zone.food > 0 || zone.water > 0)) {
+    // select forage
+} else if (visibleTributes.length > 0) {
+    // select hide
+} else {
+    // select rest
+}
+```
+
+## Verification plan: for each of 1-6, the test that proves it. Think about what must not happen, and how many times. 
+
+
+### Data flow
+
+### types/conversion
+
+a line that is longer than MAX_LINE_LENGTH, it will be truncated
+
+a line leak (normalised overlap check), will be replaced with a neutral line
+
+the converted decision has no intent key.
+
+given a valid action with a duplicate tag, the results is source: "llm" with the LLM's action unchanged
+
+### tag updates
+
+if the same tributeId appears twice in tagUpdates, the last one wins (merging conflicts with "replace")
+
+if tagUpdates contains an unknown tributeId, that entry will be dropped
+
+if tagUpdates contains the tributes own tributeId, that entry will be dropped
+
+if there are too many tags (more than MAX_TAGS_PER_TRIBUTE), it will be truncated
+
+if the tags are above MAX_TAG_LENGTH, they will be truncated
+
+if there is a tag about a tribute that has not yet been seen, that entry will be dropped
+
+a tribute not in the update change-list keeps its old tags
+
+### validation
+
+hunt on a tribute not in visibleTributes, a fallback will be returned (with source: "fallback" and reason "huntTargetInvalid")
+
+move_to a zone not in adjacentZoneIds returns a fallback (with source: "fallback" and reason "targetZoneInvalid")
+
+### fallback
+
+Given hunger ≥ FALLBACK_FORAGE_HUNGER and the zone has food, the fallback returns forage, even when tributes are visible (forage wins over hide). 
+
+Given hunger < FALLBACK_FORAGE_HUNGER and tributes are visible in the current zone, the fallback returns hide 
+
+Given hunger ≥ FALLBACK_FORAGE_HUNGER, zone has water but no food, the fallback returns forage, even when tributes are visible (forage wins over hide).
+
+Given hunger ≥ FALLBACK_FORAGE_HUNGER, zone has no food or water, and tributes are visible, the fallback returns hide. 
+
+Given hunger < FALLBACK_FORAGE_HUNGER, no tributes visible in current zone, the fallback returns rest.
+
+across all the scenarios above, the fallback's action type is always one of forage, hide or rest. 
+
+hunger exactly at threshold -> forage 
+
+one below threshold -> not forage 
+
+### Witnessed
+
+a hidden observer still sees: when tribute witnesses an attack whilst hiding, witnessed will return this in memory exactly once
+
+watching someone hide isn't recorded: if two tributes are in one zone and one is hiding, the hide event will not be stored in the others memory
+
+a private event is seen only by its subject: witness memory will not contain TributeHungerChanged, TributeHealthChanged, TributeAmmunitionChanged, SponsorGiftDelivered events of another tribute
+
+a melee victim knows the attacker: when a tribute is attacked by a tribute with a melee weapon, their memory will contain the attack with the attackerId 
+
+a ranged victim gets "unseen attacker": when a tribute is attacked by a tribute with a ranged weapon, their memory will contain the attack without an attackerId, and t1's long-term facts contain no attack entry for the ranged attacker.
+
+a zone-wide event is seen by everyone in the zone: when a zone-wide even occurs, this event will be in the memory of every tribute in that zone, but none outside that zone
+
+Given t1 moves river → forest before t4 attacks t2 in river in the same round, witnessed(t1) does not include the attack, and witnessed(t2) includes it exactly once.
+
+## Memory
+
+- Memory is computed from the event log, and relationshipTags are recorded.
+- Memory is computed in sim from the starting positions plus the event log, never stored. 
+- relationshipTags are recorded per round, outside GameState, on the agent side.
+- One visibility helper is shared by perceive and witnessed.
+- Witness data never reaches the client.
+- Facts come only from witnessed() output, never from the full log. 
+- Leave out zero values.
+
+Memory event classifications
+
+| | Events | Witnessed by |
+| | ------ | ------------ |
+| Public | TributeAttacked, TributeDied, TributeForaged, TributeRested, TributeGainedItem, TributeBetrayedAlliance, TributeChangedZone | anyone in that zone at that seq who can see the actor |
+| Zone-wide | ZoneFlooded, ZoneClosed | anyone in that zone |
+| Private | TributeHungerChanged, TributeHealthChanged, TributeAmmunitionChanged, SponsorGiftDelivered | the subject only |
+| Hidden by decision | TributeHid | the subject only (today's decision) |
+
+## Checks
+
+|             | Decision-time check | Resolution-time check |
+| ----------- | ------------------- | ----------- |
+| When      | After the LLM replies, before anything resolves | On this tribute's turn in the sequence |
+| What failed   | The LLM chose something illegal | The world changed since the choice |
+| Response   | Fallback (retry: see open-tasks) | Resolve to a real outcome and emit an event |
+
+## Reasoning
+
+Benefits for adding reasoning:
+richer narration
+debugging (asking to reason produces better choices)
+
+Cost of adding reasoning:
+Adds cost, and adds latency to every round (cap the length to one sentence)
+
+Never do this:
+store in memory (becomes a channel for prompt injection)
+the engine never reads reasoning to decide anything (resolves the action not the reasoning)
+
+
+
+
+# Previous Planning
+
 ## perception snapshot
 
 Current Tribute Information
@@ -62,7 +273,7 @@ Intelligence: {stats.intelligence}
 Stealth: {stats.stealth}
 
 Please return you're response in the following JSON format:
-{ "reasoning": "I'm hungry and there are no other tributes in this zone, I should forage", "action": { "type": "forage" } }
+
 `
 
 ## user messages
@@ -107,12 +318,11 @@ ${pendingProposals?.length > 0 && - accept_alliance: ${pendingProposals.join(", 
 `
 
 
-
 ## response schema
 
 Two layers of validation:
 1. Shape: is this valid JSON matching the Action union? A schema or TypeScript can check this.
-2. Legality: is this action allowed for this tribute, right now? Only the engine can check this, because it needs GameState. 
+2. Legality: is this action allowed for this tribute, right now?
 
 Action response
 The target must be in this tribute's perception snapshot
@@ -120,26 +330,8 @@ hunt: the target must be spotted by the Tribute
 betray: must be in alliance with the Tribute (ally), and the ally must be spotted
 move_to: the zone must be adjacent to the current zone
 
-fallback: in danger → move to the safest adjacent zone; starving and food is here → forage; otherwise → rest (If two zones tie for safest, the seeded RNG breaks the tie)
 
-Checks
 
-|             | Decision-time check | Resolution-time check |
-| ----------- | ------------------- | ----------- |
-| When      | After the LLM replies, before anything resolves | On this tribute's turn in the sequence |
-| What failed   | The LLM chose something illegal | The world changed since the choice |
-| Response   | Retry once, then fallback | Resolve to a real outcome and emit an event |
 
-Response type
-{ "reasoning": "9 has a bow and I only have a knife, I should hide", "action": { "type": "hide" } }
 
-Benefits for adding reasoning:
-richer narration
-debugging (asking to reason produces better choices)
 
-Cost of adding reasoning:
-Adds cost, and adds latency to every round (cap the length to one sentence)
-
-Never do this:
-store in memory (becomes a channel for prompt injection)
-the engine never reads reasoning to decide anything (resolves the action not the reasoning)

@@ -1,0 +1,1 @@
+Consider retry if the playtest fallback rate for invalid actions is high

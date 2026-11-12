@@ -11,7 +11,7 @@
 - Field order matters, if reasoning comes before action in the schema, the model "thinks out loud" first then chooses, which tends to give better decisions.
 - Haiku 5.5 has built-in thinking, on by default. A reasoning field is visible.
 - The reasoning must never reach the engine. 
-- Personality being "not obvious" is the reason to add a short in-character line. It gives the narrator flavour and makes personality visible. 
+- Personality being "not obvious" is the reason to add a short in-character line. It gives the narrator flavour and makes personality visible.
 - Relationship tags: another field in the same response, written by the LLM from the events the tribute witnessed. Engine ignores them.
 - Schema changes: one Zod schema as the single source of trurth.
 - Generates JSON Schema, Typescript type, and the validator. 
@@ -92,3 +92,4 @@ usage:
 
 
 The limit .max() in zod is silently ignored, so the validation layer will have to enforce it.
+
