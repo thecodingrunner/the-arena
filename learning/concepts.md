@@ -104,3 +104,27 @@ Record durable understanding, not every definition encountered.
 - **Example:** feed returns {hunger, delta}; resolveRound mutates state and emits, keeping seq order in one place
 - **Related concepts:** 
 
+## 2026-11-12: computed vs recorded
+- **Learner's explanation:** only data that is not deterministic and cannot be calculated should be recorded
+- **Corrected understanding:** if you can derive something, recording it as well creates two sources that can disagree. record only what can't be regenerated, and compute the rest.
+- **Example:** memory is computed from the starting positions plus the event log. relationshipTags are recorded because the LLM wrote them. 
+- **Related concepts:** determinism, replay, single source of truth.
+
+## 2026-11-12: public vs private events
+- **Learner's explanation:** an event enters t1's memory if t1 is its subject, or if t1 could physically see it at that seq (same zone, actor visible). Another tribute's internal numbers never enter it.
+- **Corrected understanding:** 
+- **Example:** t2's TributeHungerChanged in t1's zone is not witnessed. t2's TributeDied is. 
+- **Related concepts:** the visibility helper, perceive, design rule 6.
+
+## 2026-11-12: measure before adding retry
+- **Learner's explanation:** before implementing retry functionality on llm calls, first measure the number of failed calls to check whether that time investment and complexity is worth it
+- **Corrected understanding:** measuring only works if you've built in a way to measure. That's why source and reason are on AgentDecision.
+- **Example:** step 9 sends every failure to the fallback, and step 13 checks the fallback rate by reason.
+- **Related concepts:** YAGNI, observability
+
+## 2026-11-12: legal by construction (the fallback)
+- **Learner's explanation:** the fallback can never produce an invalid action, since the possible actions (rest, forage, hide)  have no preconditions. It is different from checking an action is valid, since the fallback is valid by default.
+- **Corrected understanding:** a check catches a bad value after it exists, while construction means a bad value can't exist at all. legal by construction, as long as the actions have no preconditions, and a test guards that assumption.
+- **Example:** rest, hide, and forage, are always valid/legal by default.
+- **Related concepts:** the default: never in the resolveGifts switch case (forgotten case won't compile).
+
