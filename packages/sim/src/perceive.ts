@@ -4,6 +4,7 @@ import {
   type Perception,
   type TributeId,
 } from "@arena/shared";
+import { canSee } from "./visibility";
 
 export function perceive(state: GameState, tributeId: TributeId): Perception {
   const tribute = state.tributes.find((t) => t.tributeId === tributeId);
@@ -21,10 +22,12 @@ export function perceive(state: GameState, tributeId: TributeId): Perception {
 
   const tributesInSameZone = state.tributes.filter(
     (t) =>
-      t.position === tribute.position &&
-      t.alive &&
-      t.tributeId !== tribute.tributeId,
+      canSee(
+        tribute,
+        t.position,
+      ) && t.tributeId !== tribute.tributeId && t.alive,
   );
+
   const visibleTributes = tributesInSameZone.map((t) => {
     return {
       tributeId: t.tributeId,
