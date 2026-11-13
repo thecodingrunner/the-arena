@@ -9,12 +9,18 @@ import { makeConfig } from "./testFixtures";
 import { witnessed } from "./witnessed";
 import type {
   GameEvent,
+  SponsorGiftDelivered,
+  TributeAmmunitionChanged,
   TributeAttacked,
   TributeChangedZone,
   TributeDied,
   TributeForaged,
+  TributeHealthChanged,
   TributeHid,
+  TributeHungerChanged,
   TributeRested,
+  ZoneClosed,
+  ZoneFlooded,
 } from "@arena/shared";
 
 describe("witnessed", () => {
@@ -49,7 +55,7 @@ describe("witnessed", () => {
         victimId: "t3",
         location: "river",
         outcome: "hit",
-        weaponDefinitionId: "bow",
+        weaponDefinitionId: "crowbar",
       }) as TributeAttacked,
     ];
 
@@ -265,5 +271,425 @@ describe("witnessed", () => {
     expect(witnessedT1).toContainEqual(
       expect.objectContaining({ type: "TributeChangedZone", tributeId: "t1" }),
     );
+  });
+
+  // classification
+
+  test("another tribute's private event in your zone (e.g. t2's TributeHungerChanged) -> excluded", () => {
+    const before = createMatch(makeConfig());
+
+    before.tributes[0]!.position = "river";
+    before.tributes[1]!.position = "river";
+    before.tributes[2]!.position = "river";
+
+    const events: GameEvent[] = [
+      ev({
+        type: "TributeHungerChanged",
+        tributeId: "t2",
+        hunger: 50,
+        delta: 10,
+        location: "river",
+      }) as TributeHungerChanged,
+      ev({
+        type: "TributeForaged",
+        tributeId: "t3",
+        success: true,
+        location: "river",
+      }) as TributeForaged,
+    ];
+
+    const witnessedT1 = witnessed(before, events, "t1");
+
+    expect(witnessedT1).not.toContainEqual(
+      expect.objectContaining({
+        type: "TributeHungerChanged",
+        tributeId: "t2",
+      }),
+    );
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({ type: "TributeForaged", tributeId: "t3" }),
+    );
+  });
+
+  test.each([
+    ev({
+      type: "TributeHungerChanged",
+      tributeId: "t2",
+      delta: 5,
+      hunger: 50,
+      location: "centre",
+    }) as TributeHungerChanged,
+    ev({
+      type: "TributeHealthChanged",
+      tributeId: "t2",
+      delta: 5,
+      hp: 50,
+      location: "centre",
+    }) as TributeHealthChanged,
+    ev({
+      type: "TributeAmmunitionChanged",
+      tributeId: "t2",
+      delta: 5,
+      ammunition: 50,
+      location: "centre",
+      itemId: "bow-1",
+    }) as TributeAmmunitionChanged,
+    ev({
+      type: "SponsorGiftDelivered",
+      to: "t2",
+      itemDefinitionId: "ration_pack",
+      giftId: "g1",
+      appliedInRound: 1,
+      location: "centre",
+      senderId: null,
+    }) as SponsorGiftDelivered,
+  ])("another tribute's $type is not witnessed", (event) => {
+    const before = createMatch(makeConfig());
+
+    before.tributes[0]!.position = "centre";
+    before.tributes[1]!.position = "centre";
+    before.tributes[2]!.position = "centre";
+
+    const events: GameEvent[] = [
+      event,
+      ev({
+        type: "TributeForaged",
+        tributeId: "t3",
+        success: true,
+        location: "centre",
+      }) as TributeForaged,
+    ];
+
+    const witnessedT1 = witnessed(before, events, "t1");
+
+    expect(witnessedT1).not.toContainEqual(event);
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({ type: "TributeForaged", tributeId: "t3" }),
+    );
+  });
+
+  test.each([
+    ev({
+      type: "TributeHungerChanged",
+      tributeId: "t1",
+      delta: 5,
+      hunger: 50,
+      location: "centre",
+    }) as TributeHungerChanged,
+    ev({
+      type: "TributeHealthChanged",
+      tributeId: "t1",
+      delta: 5,
+      hp: 50,
+      location: "centre",
+    }) as TributeHealthChanged,
+    ev({
+      type: "TributeAmmunitionChanged",
+      tributeId: "t1",
+      delta: 5,
+      ammunition: 50,
+      location: "centre",
+      itemId: "bow-1",
+    }) as TributeAmmunitionChanged,
+    ev({
+      type: "SponsorGiftDelivered",
+      to: "t1",
+      itemDefinitionId: "ration_pack",
+      giftId: "g1",
+      appliedInRound: 1,
+      location: "centre",
+      senderId: null,
+    }) as SponsorGiftDelivered,
+  ])("a tribute's own $type is witnessed", (event) => {
+    const before = createMatch(makeConfig());
+
+    before.tributes[0]!.position = "centre";
+    before.tributes[1]!.position = "centre";
+    before.tributes[2]!.position = "centre";
+
+    const events: GameEvent[] = [
+      event,
+      ev({
+        type: "TributeForaged",
+        tributeId: "t3",
+        success: true,
+        location: "centre",
+      }) as TributeForaged,
+    ];
+
+    const witnessedT1 = witnessed(before, events, "t1");
+
+    expect(witnessedT1).toContainEqual(event);
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({ type: "TributeForaged", tributeId: "t3" }),
+    );
+  });
+
+  test("another tribute's hid in the same zone is excluded", () => {
+    const before = createMatch(makeConfig());
+
+    before.tributes[0]!.position = "river";
+    before.tributes[1]!.position = "river";
+    before.tributes[2]!.position = "river";
+
+    const events: GameEvent[] = [
+      ev({
+        type: "TributeHid",
+        tributeId: "t2",
+        location: "river",
+      }) as TributeHid,
+      ev({
+        type: "TributeForaged",
+        tributeId: "t3",
+        success: true,
+        location: "river",
+      }) as TributeForaged,
+    ];
+
+    const witnessedT1 = witnessed(before, events, "t1");
+
+    expect(witnessedT1).not.toContainEqual(
+      expect.objectContaining({ type: "TributeHid", tributeId: "t2" }),
+    );
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({ type: "TributeForaged", tributeId: "t3" }),
+    );
+  });
+
+  test("zone wide events are included, events outside the zone are excluded", () => {
+    const before = createMatch(makeConfig());
+
+    before.tributes[0]!.position = "river";
+    before.tributes[1]!.position = "river";
+    before.tributes[2]!.position = "river";
+
+    const events: GameEvent[] = [
+      ev({
+        type: "ZoneFlooded",
+        zoneId: "river",
+        location: "river",
+      }) as ZoneFlooded,
+      ev({
+        type: "ZoneClosed",
+        zoneId: "river",
+        location: "river",
+      }) as ZoneClosed,
+      ev({
+        type: "ZoneFlooded",
+        zoneId: "centre",
+        location: "centre",
+      }) as ZoneFlooded,
+      ev({
+        type: "ZoneClosed",
+        zoneId: "centre",
+        location: "centre",
+      }) as ZoneClosed,
+    ];
+
+    const witnessedT1 = witnessed(before, events, "t1");
+
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({ type: "ZoneFlooded", zoneId: "river" }),
+    );
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({ type: "ZoneClosed", zoneId: "river" }),
+    );
+
+    expect(witnessedT1).not.toContainEqual(
+      expect.objectContaining({ type: "ZoneFlooded", zoneId: "centre" }),
+    );
+    expect(witnessedT1).not.toContainEqual(
+      expect.objectContaining({ type: "ZoneClosed", zoneId: "centre" }),
+    );
+  });
+
+  test("when a tribute is hit by a melee attack, the attack is included with the attackerId", () => {
+    const before = createMatch(makeConfig());
+
+    before.tributes[0]!.position = "river";
+    before.tributes[1]!.position = "river";
+    before.tributes[2]!.position = "river";
+
+    const events: GameEvent[] = [
+      ev({
+        type: "TributeAttacked",
+        attackerId: "t2",
+        victimId: "t1",
+        outcome: "hit",
+        location: "river",
+        weaponDefinitionId: "crowbar",
+      }) as TributeAttacked,
+      ev({
+        type: "TributeForaged",
+        tributeId: "t3",
+        success: true,
+        location: "river",
+      }) as TributeForaged,
+    ];
+
+    const witnessedT1 = witnessed(before, events, "t1");
+
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({
+        type: "TributeAttacked",
+        victimId: "t1",
+        attackerId: "t2",
+      }),
+    );
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({ type: "TributeForaged", tributeId: "t3" }),
+    );
+  });
+
+  test("when a tribute is hit by a ranged attack, the attack is included without the attackerId", () => {
+    const before = createMatch(makeConfig());
+
+    before.tributes[0]!.position = "river";
+    before.tributes[1]!.position = "river";
+    before.tributes[2]!.position = "river";
+
+    const events: GameEvent[] = [
+      ev({
+        type: "TributeAttacked",
+        victimId: "t1",
+        attackerId: "t2",
+        outcome: "hit",
+        location: "river",
+        weaponDefinitionId: "bow",
+      }) as TributeAttacked,
+      ev({
+        type: "TributeForaged",
+        tributeId: "t3",
+        success: true,
+        location: "river",
+      }) as TributeForaged,
+    ];
+
+    const witnessedT1 = witnessed(before, events, "t1");
+
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({
+        type: "TributeAttacked",
+        victimId: "t1",
+        attackerId: null,
+      }),
+    );
+    expect(witnessedT1).not.toContainEqual(
+      expect.objectContaining({ type: "TributeAttacked", attackerId: "t2" }),
+    );
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({ type: "TributeForaged", tributeId: "t3" }),
+    );
+  });
+
+  test("throw when the weapon in an attack is undefined", () => {
+    const before = createMatch(makeConfig());
+
+    before.tributes[0]!.position = "river";
+    before.tributes[1]!.position = "river";
+    before.tributes[2]!.position = "river";
+
+    const events: GameEvent[] = [
+      ev({
+        type: "TributeAttacked",
+        victimId: "t1",
+        attackerId: "t2",
+        outcome: "hit",
+        location: "river",
+        weaponDefinitionId: "throw",
+      }) as TributeAttacked,
+      ev({
+        type: "TributeForaged",
+        tributeId: "t3",
+        success: true,
+        location: "river",
+      }) as TributeForaged,
+    ];
+
+    expect(() => witnessed(before, events, "t1")).toThrow("unknown weaponDefinitionId throw");
+  });
+
+  test("an attack that's outcome is 'notFound' is not included", () => {
+    const before = createMatch(makeConfig());
+
+    before.tributes[0]!.position = "river";
+    before.tributes[1]!.position = "river";
+    before.tributes[2]!.position = "river";
+
+    const events: GameEvent[] = [
+      ev({
+        type: "TributeAttacked",
+        victimId: "t1",
+        attackerId: "t2",
+        outcome: "notFound",
+        location: "river",
+        weaponDefinitionId: "throw",
+      }) as TributeAttacked,
+      ev({
+        type: "TributeForaged",
+        tributeId: "t3",
+        success: true,
+        location: "river",
+      }) as TributeForaged,
+    ];
+
+    const witnessedT1 = witnessed(before, events, "t1");
+    const witnessedT2 = witnessed(before, events, "t2");
+
+    expect(witnessedT1).not.toContainEqual(
+      expect.objectContaining({
+        type: "TributeAttacked",
+        victimId: "t1",
+        attackerId: "t2",
+      }),
+    );
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({ type: "TributeForaged", tributeId: "t3" }),
+    );
+    expect(witnessedT2).toContainEqual(
+      expect.objectContaining({ type: "TributeAttacked", attackerId: "t2", victimId: "t1" }),
+    )
+  });
+
+  test("an attack that's outcome is 'targetGone' is not included", () => {
+    const before = createMatch(makeConfig());
+
+    before.tributes[0]!.position = "river";
+    before.tributes[1]!.position = "river";
+    before.tributes[2]!.position = "river";
+
+    const events: GameEvent[] = [
+      ev({
+        type: "TributeAttacked",
+        victimId: "t1",
+        attackerId: "t2",
+        outcome: "targetGone",
+        location: "river",
+        weaponDefinitionId: "throw",
+      }) as TributeAttacked,
+      ev({
+        type: "TributeForaged",
+        tributeId: "t3",
+        success: true,
+        location: "river",
+      }) as TributeForaged,
+    ];
+
+    const witnessedT1 = witnessed(before, events, "t1");
+    const witnessedT2 = witnessed(before, events, "t2");
+
+    expect(witnessedT1).not.toContainEqual(
+      expect.objectContaining({
+        type: "TributeAttacked",
+        victimId: "t1",
+        attackerId: "t2",
+      }),
+    );
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({ type: "TributeForaged", tributeId: "t3" }),
+    );
+    expect(witnessedT2).toContainEqual(
+      expect.objectContaining({ type: "TributeAttacked", attackerId: "t2", victimId: "t1" }),
+    )
   });
 });

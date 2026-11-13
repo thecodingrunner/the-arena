@@ -4,8 +4,19 @@
 //     if it's a TributeChangedZone for observer → update position
 //     if it's a TributeDied for observer        → alive = false
 
-import type { GameEvent, GameState, TributeId } from "@arena/shared";
+import {
+  weaponDefinitions,
+  type GameEvent,
+  type GameState,
+  type TributeAttacked,
+  type TributeId,
+} from "@arena/shared";
 import { canSee } from "./visibility";
+
+export type UnseenAttack = Omit<TributeAttacked, "attackerId"> & {
+  attackerId: null;
+};
+export type WitnessedEvent = GameEvent | UnseenAttack;
 
 const publicEvents: GameEvent["type"][] = [
   "TributeAttacked",
@@ -17,14 +28,15 @@ const publicEvents: GameEvent["type"][] = [
   "TributeChangedZone",
   "ZoneWaterChanged",
   "ZoneFoodChanged",
-  "MatchEnded",
+  "ZoneFlooded",
+  "ZoneClosed",
 ];
 
 export function witnessed(
   initialState: GameState,
   events: GameEvent[],
   tributeId: TributeId,
-): GameEvent[] {
+): WitnessedEvent[] {
   const observer = initialState.tributes.find((t) => t.tributeId === tributeId);
 
   if (!observer)
@@ -34,12 +46,11 @@ export function witnessed(
 
   let alive = observer.alive;
 
-  const witnessedEvents: GameEvent[] = [];
+  const witnessedEvents: WitnessedEvent[] = [];
 
   for (const e of events) {
     const canSeeEvent = canSee({ position, alive }, e.location);
 
-    // dependant on the zone change origin being at start position, and tribute died being at start position
     if (e.type === "TributeChangedZone" && e.tributeId === tributeId) {
       position = e.currentZoneId;
     } else if (e.type === "TributeDied" && e.victimId === tributeId) {
@@ -52,6 +63,17 @@ export function witnessed(
     const included = isOwnEvent || (canSeeEvent && publicEvent);
 
     if (!included) continue;
+
+    if (e.type === "TributeAttacked" && e.victimId === tributeId) {
+      const notRegistered =
+        e.outcome === "notFound" || e.outcome === "targetGone";
+      if (notRegistered) continue;
+
+      if (isRanged(e.weaponDefinitionId)) {
+        witnessedEvents.push({ ...e, attackerId: null } as UnseenAttack);
+        continue;
+      }
+    }
 
     witnessedEvents.push(e);
   }
@@ -78,6 +100,7 @@ function isOwn(e: GameEvent, tributeId: TributeId): boolean {
     case "SponsorGiftDelivered":
       return e.to === tributeId;
     case "TributeBetrayedAlliance":
+      // TODO: currently only includes the betrayer, will need to add the alliance members in stage 10
       return e.betrayerId === tributeId;
     case "ZoneWaterChanged":
     case "ZoneFoodChanged":
@@ -90,4 +113,15 @@ function isOwn(e: GameEvent, tributeId: TributeId): boolean {
       return unhandled;
     }
   }
+}
+
+function isRanged(weaponDefinitionId: string | null): boolean {
+  const weapon = weaponDefinitions.find(
+    (w) => w.weaponDefinitionId === weaponDefinitionId,
+  );
+
+  if (weaponDefinitionId === null) return false;
+  if (weapon === undefined) throw new Error(`unknown weaponDefinitionId ${weaponDefinitionId}`);
+
+  return weapon.ranged;
 }

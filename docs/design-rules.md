@@ -4,7 +4,7 @@
 4. Store each round's chosed actions (inputs), not just the event log (outputs).
 5. The engine owns the truth, and the LLM only reacts to it. 
 6. The engine builds each tribute's perception. Tributes only see what they could possibly know. 
-7. a tribute only knows who attacked them (in memories) when it was a melee attack, and not a ranged attack. 
+7. a tribute only knows who attacked them (in memories) when it was a melee attack, and not a ranged attack. Bystanders know who attacked who.
 8. When the input means the caller has a bug, crash at the bug, not three steps later.
 9. Move events are located at the origin.
 10. resting exactly cancels out the starvation drain (+10 / -10)
