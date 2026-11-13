@@ -183,6 +183,13 @@ Memory event classifications
 | Private | TributeHungerChanged, TributeHealthChanged, TributeAmmunitionChanged, SponsorGiftDelivered | the subject only |
 | Hidden by decision | TributeHid | the subject only (today's decision) |
 
+## From the design boards (tribute detail screen)
+
+- **Tag sources:** the grudges panel says "formed from what Kael saw · tap for source". Every tag change is recorded with the **round** it happened in, and its source is the events this tribute witnessed in that round. No extra LLM field is needed. The recorded tags therefore have the shape `{ round, tributeId, about, tags }`, not just the latest tags.
+- **Memory with quotes:** memory rows pair a witnessed event with that round's `line` ("Watched Reva Lune leave Nico Sarr on the Overpass. 'Never her.'"). The display joins `witnessed()` output with the recorded `line` for the same round. `line` is already recorded per decision, so nothing new is stored.
+- **Own actions count:** memory includes the tribute's own actions and their outcomes ("Threw two knives at Mara Quill. Missed both, lost both."). `witnessed()` already includes events where the tribute is the subject.
+- **Declined alliance offers** appear in memory ("Turned down Reva Lune's offer to team up"), so the alliances step (Phase 1 step 10) needs an event for a declined or ignored proposal.
+
 ## Checks
 
 |             | Decision-time check | Resolution-time check |

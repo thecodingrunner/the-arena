@@ -7,3 +7,7 @@ coverage/
 .env
 .env.*
 !.env.example
+
+/docs/Glass Flats 3D.html
+/docs/the-arena-design.html
+/docs/The Arena — 3D Arena Cheat Sheet.pdf

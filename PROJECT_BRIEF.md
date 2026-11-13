@@ -25,9 +25,9 @@ The table below describes the full game. **The MVP leaves out:** the other three
 | **Arena selection** | One of four arenas, each a set of zones with its own hazards (§2, Hazards). Glass Flats only until Phase 5 |
 | **Loading** | A per-arena loading screen while the 3D scene builds and its shaders compile |
 | **The match** | The player, or every player in the room, watches the match live in a **3D arena**. The camera switches between the **Broadcast** view (perspective, the default) and the **Overhead** view (orthographic, straight down, which is the game's "2D map"), with Ground and Follow-my-tribute presets. Devices without WebGL, or too slow for the 3D scene, get a **2D map** instead (Phase 5). An **announcer feed** narrates what happens |
-| **Tribute detail** | Clicking a tribute opens its health, hunger, stats, weapon and ammunition, inventory, memory, and alliances and grudges. Its personality prompt is shown only if it's the player's own |
+| **Tribute detail** | Clicking a tribute opens its health, hunger, stats, weapon and ammunition, inventory (weapons only) and gifts on their way ("lands round 8"), memory (witnessed events with the tribute's line from that round), and alliances and grudges, each of which can be tapped to show the round and events it came from. Its personality prompt is shown only if it's the player's own |
 | **Sponsoring** | During the match, players spend sponsor points to send items (food, water, medicine, ammunition) to any tribute. **Gifts are used the moment they land**, so the player sees the effect in the promised round. Ammunition can only be sent to a tribute holding the matching weapon. Players earn more points for every day their tribute survives |
-| **After elimination** | A player whose tribute dies can keep watching and sponsoring, or leave |
+| **After elimination** | A player whose tribute dies can keep watching and sponsoring, or leave. In solo, leaving finishes the match instantly with the fallback agent for every remaining tribute (no LLM calls), so there is still exactly one winner, and goes straight to the results |
 | **Results** | Final placements, the player's own result, and every tribute's personality prompt revealed. Key moments that jump into the replay come with replays (Phase 6) |
 | **Allowance and membership** | Watching is free, and everyone gets a small daily allowance of matches they start (in the MVP). A monthly **Supporter** membership through Clerk Billing, adding more matches and extras that never affect who wins, comes later and only if it's needed to cover LLM costs (Phase 8, §6) |
 
@@ -54,7 +54,7 @@ These are settled. Don't reopen them during normal guidance. If I run `/explore`
 | Zone closures | **Zone closures stay a separate arena event** from hazards. A closed zone is sealed for the rest of the match, while a zone hazard is temporary damage | Closures drive the late game, and hazards add danger along the way |
 | **Weapons** | **Five weapons:** machete, recurve bow, spear, throwing knives and crowbar. The bow and throwing knives use **ammunition**. Each weapon's damage scales with one stat. When a tribute is killed, **the killer takes the victim's weapon with its remaining ammunition**. Thrown spears, supply caches and the snare kit are out of scope | Each weapon suits a different build, without extra systems to build and test |
 | Origin | **Cosmetic only** | Flavour for the tribute, with no effect on the rules |
-| **Relationships** | **Grudges and feelings** ("fears Dax", "distrusts Reva") **come from the agent's response,** based on events the tribute saw. They're fed back into its prompt and shown in the UI. **The engine ignores them** | Adds character without letting the LLM change game state |
+| **Relationships** | **Grudges and feelings** ("fears Dax", "distrusts Reva") **come from the agent's response,** based on events the tribute saw. They're fed back into its prompt and shown in the UI. Each change is recorded with its round, so the UI can show what caused it. **The engine ignores them** | Adds character without letting the LLM change game state |
 | **Hidden prompts** | **Every tribute's personality prompt, other than the player's own, is hidden until the match ends.** The server doesn't send them to clients before then | A rival's prompt would reveal their strategy. Hiding it in the UI alone isn't enough |
 | **Game modes** | **Solo** (one player plus 7 AI tributes) **is built first, as the MVP**: the engine (Phase 1), Glass Flats in 3D (Phase 2), the creator (Phase 3) and live solo play (Phase 4). **Multiplayer** (AI fills the empty slots) **is an add-on in Phase 9** | A complete, playable solo game comes before the extra work of rooms and syncing players |
 | **Vertical slice** | **The MVP is built end to end on one arena, Glass Flats,** before the other three get their 3D scenes (Phase 5). The rules data for all four arenas is still done in Phase 1 | Problems with the event format, playback and the live stream show up early, while they're cheap to fix, and the game is playable sooner |
@@ -181,7 +181,7 @@ Both modes use the same engine, agents, arenas, 3D scene, event log and match lo
 | **Setup** | Play solo → create a tribute → pick an arena → start | Join a room, then follow the room statuses in §5.1 |
 | **Connections** | One | One per player |
 | **Pacing** | The player can pause and change playback speed | The server sets one pace for everyone, with a countdown to the next round |
-| **After elimination** | Keep watching and sponsoring, or leave, which ends the match | Keep watching and sponsoring as a spectator, or leave while the match continues |
+| **After elimination** | Keep watching and sponsoring, or leave, which finishes the match instantly with fallback agents (no LLM calls) and shows the results | Keep watching and sponsoring as a spectator, or leave while the match continues |
 | **Paid for by** | The player's daily allowance or plan | The host's allowance or plan covers the whole room. Joining is free |
 | **Built in** | Phase 4 (the solo MVP, on Glass Flats) | Phase 9 (add-on) |
 
@@ -227,7 +227,7 @@ player:  sends sponsor gift ──> server validates ──> applied at the firs
 | Direction | Solo and shared messages (Phase 4) | Room messages (Phase 9) |
 |---|---|---|
 | Client → server | start solo match, pause, set playback speed, send sponsor gift, leave match | join room, leave room, submit tribute, ready, start match (host), resume from sequence number |
-| Server → client | match started, event batch, sponsor gift accepted or rejected, match finished (with all personality prompts), error (including "daily allowance used") | room state, player joined or left |
+| Server → client | match started, event batch, round progress while the buffer is empty ("5 of 7 tributes have decided round 8"), sponsor gift accepted or rejected, match finished (with all personality prompts), error (including "daily allowance used") | room state, player joined or left |
 
 All messages are defined as schemas in `packages/shared` and carry a **protocol version**. Membership doesn't go over the WebSocket: Clerk's own components and pages handle sign-in and checkout. The WebSocket only carries the session token the server needs to identify the player (how it's passed is a Phase 8 `/arch` question).
 
@@ -463,9 +463,9 @@ Tribute skins, weapon looks, arena themes and **announcer personas** (for exampl
 7. `/test` → build: **sponsor gifts as engine input**. A CLI flag can inject a gift at a given round
 8. `/api` on the LLM SDK and structured output → `/arch`: the **agent prompt and response schema**, including relationship tags (`docs/agent-prompt.md`)
 9. `/test` → build: the **LLM decision loop** with validation and fallback, computed memory (`witnessed()`) and relationship tags
-10. `/arch` → `/test` → build: **alliances**: proposing, accepting (both sides must agree), allies can't hunt each other, an ally's sightings appear in your perception, and betrayal. Add them to the random agent and the prompt
+10. `/arch` → `/test` → build: **alliances**: proposing, accepting (both sides must agree), allies can't hunt each other, an ally's sightings appear in your perception, and betrayal. A declined or ignored proposal emits an event, so it can appear in memory ("Turned down Reva Lune's offer"). Add them to the random agent and the prompt
 11. Build: **arena events**: zones closing based on tributes alive per open zone, and **map-wide and zone hazards** from the arena definition, emitting `HazardStruck`. Make sure events carry what the 3D scene will need later (day or night phase, active hazards, closures)
-12. Add the other three arenas as rules data in `packages/shared` (`arenas.ts`), each with hand-picked `startingZoneIds`
+12. Add the four arenas as rules data in `packages/shared` (`arenas.ts`), each with hand-picked `startingZoneIds`. **Use the zone IDs the visual configs will use**, so the Phase 2 coverage test (§3 rule 9) passes. Glass Flats: `dune`, `wreck`, `sink`, `mirror`, `gz` (from the cheat sheet). Starting hazard values from the prototype: midday heat −6 HP per round (map-wide), sinkholes −20 HP per round (zone)
 13. `/api` → build: the **narrator**
 14. Playtest about 10 LLM matches at 8 tributes across all four arenas, then tune the numbers. Random-agent matches at 8 and 24 can test how often tributes meet and how deadly each arena's hazards are, without any LLM cost
 
@@ -545,11 +545,12 @@ Split into three parts. Each one is playable before the next starts.
 
 #### 4a — A live solo match
 
-**Order:** `/api` on `ws` (what it gives you, and what it deliberately doesn't) → `/arch` the match loop, its separation from rooms (§3, §5.7) and the solo protocol (§5.3) → `/test` message schemas and solo match rules in `shared` → the `ws` server attached to the Node HTTP server, with message routing and heartbeat → landing page with guest name and Play solo → solo setup: create tribute, start (the arena picker offers Glass Flats until Phase 5) → `startMatch`, the one service function every match starts through, recording usage in Postgres (player or guest ID, mode, tribute count, model, tokens, cost) → the server match loop wrapping `sim` and `agents`, filling the 7 AI slots → stream event batches into the 3D arena through the event source interface → pause and playback speed, with simulation stopping while paused → the "simulating next round" screen when the buffer runs out → keep watching or leave after elimination → results screen, revealing every personality prompt.
+**Order:** `/api` on `ws` (what it gives you, and what it deliberately doesn't) → `/arch` the match loop, its separation from rooms (§3, §5.7) and the solo protocol (§5.3) → `/test` message schemas and solo match rules in `shared` → the `ws` server attached to the Node HTTP server, with message routing and heartbeat → landing page with guest name and Play solo → solo setup: create tribute, start (the arena picker offers Glass Flats until Phase 5) → `startMatch`, the one service function every match starts through, recording usage in Postgres (player or guest ID, mode, tribute count, model, tokens, cost) → the server match loop wrapping `sim` and `agents`, filling the 7 AI slots → stream event batches into the 3D arena through the event source interface → pause and playback speed, with simulation stopping while paused → the "simulating next round" screen when the buffer runs out → keep watching or leave after elimination (leaving finishes the match instantly with fallback agents, no LLM calls) → results screen, revealing every personality prompt (no "Watch replay" or key moments until Phase 6).
 
 **Done when:**
 - [ ] One player can go from the landing page to a full live 3D match against 7 AI tributes in the browser, and see the results
 - [ ] While the match is paused, no new rounds are simulated and no LLM calls are made
+- [ ] Leaving after elimination produces results with exactly one winner, and makes no further LLM calls
 - [ ] Other tributes' personality prompts never reach the client before the match ends
 - [ ] Forged or malformed messages are rejected without affecting the match
 - [ ] The match loop contains no room logic
@@ -581,7 +582,7 @@ Split into three parts. Each one is playable before the next starts.
 
 **Learning focus:** server-authoritative real-time systems, WebSockets with `ws`, protocol design, separating playback from simulation on the server, hiding information from clients, layered security.
 
-**Shipping zone:** Dockerfile, Coolify and Nginx config, and the landing, setup and results page layouts.
+**Shipping zone:** Dockerfile, Coolify and Nginx config, and the landing, setup and results page layouts. The design boards' theme kits are CSS variables: the MVP needs only the system kit and the Glass Flats kit (the other three arrive with Phase 5).
 
 **Solo MVP check (all must hold before Phase 5):**
 - [ ] Every Phase 1–4 "done when" is met
