@@ -338,3 +338,5 @@ export type Rng = {
 };
 
 export type RoundActions = Record<TributeId, Action>;
+
+export type Tags = string[];
