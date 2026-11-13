@@ -16,6 +16,59 @@ import {
   type WeaponInstance,
 } from "@arena/shared";
 
+// Guards agents' fallback: it relies on forage/hide/rest having no
+// preconditions (docs/agent-prompt.md, "legal by construction").
+// If one of these tests needs changing, the fallback needs changing too.
+describe("fallback actions are always legal", () => {
+  // legal by construction guard test: changing this test means changing the fallback too, see docs/agent-prompt.md
+
+  test("resolveRound accepts forage, hide and rest in any state without throwing", () => {
+    const actions: RoundActions = {
+      t1: { type: "forage" },
+      t2: { type: "hide" },
+      t3: { type: "rest" },
+    };
+    const match = createMatch(makeConfig());
+
+    // forage - worst case of food 0, water 0
+    match.tributes[0]!.position = "forest";
+    match.zones.find((z) => z.zoneId === "forest")!.food = 0;
+    match.zones.find((z) => z.zoneId === "forest")!.water = 0;
+
+    // hide - worst case of cover 0, and/or nobody else in the zone
+    match.tributes[1]!.position = "centre";
+    match.zones.find((z) => z.zoneId === "centre")!.cover = 0;
+
+    // rest - worst case of enemy in zone, hunger at 100, very low hp
+    match.tributes[2]!.position = "forest";
+    match.tributes[2]!.hp = 5;
+    match.tributes[2]!.hunger = 100;
+
+    const { events } = resolveRound(match, actions);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeForaged",
+        tributeId: "t1",
+      }),
+    );
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeHid",
+        tributeId: "t2",
+      }),
+    );
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeRested",
+        tributeId: "t3",
+      }),
+    );
+  });
+});
+
 describe("resolveRound", () => {
   test("does not modify the input state", () => {
     const someActions: RoundActions = {
