@@ -18,6 +18,23 @@ Recent: every event t1 witnessed in the last 3 rounds, as raw detail
 Long-term facts: for each tribute t1 has ever seen, a few derived facts:
 t4: attacked you 2× (last round 11) · last seen: river, round 11 · killed: t7
 
+```ts
+
+type Facts = {
+  attackedYou?: number;
+  lastAttackedYou?: number;
+  lastSeen: { position: ZoneId, round: number };
+  heading?: ZoneId
+  killed: TributeId[];
+  attacked: TributeId[];
+  youAttacked?: number;
+  youLastAttacked?: number;
+  dead: boolean;
+  weaponSeen: weaponDefinitionId;
+  // Later: alliance facts ("betrayed you", "allied with")
+}
+
+```
 
 ## Types: LlmResponse (in agents, with an array of tag updates and intent) vs AgentDecision (with source)
 
