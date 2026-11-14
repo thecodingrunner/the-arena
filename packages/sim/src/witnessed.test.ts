@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, test } from "vitest";
 import { createMatch } from "./createMatch";
-import { makeConfig } from "./testFixtures";
+import { ev, makeConfig } from "./testFixtures";
 import { witnessed } from "./witnessed";
 import type {
   GameEvent,
@@ -25,11 +25,7 @@ import type {
 
 describe("witnessed", () => {
   let seq = 0;
-  function ev<E extends GameEvent>(
-    e: Omit<E, "matchId" | "seq" | "round" | "v">,
-  ): E {
-    return { matchId: "match-1", seq: seq++, round: 1, v: 1, ...e } as E;
-  }
+
   beforeEach(() => {
     seq = 0;
   });

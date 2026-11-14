@@ -70,7 +70,7 @@ export function witnessed(
       if (notRegistered) continue;
 
       if (isRanged(e.weaponDefinitionId)) {
-        witnessedEvents.push({ ...e, attackerId: null } as UnseenAttack);
+        witnessedEvents.push({ ...e, attackerId: null });
         continue;
       }
     }

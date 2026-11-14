@@ -238,7 +238,6 @@ export type SponsorGiftUndelivered = EventBase & {
   reason: "recipientDead" | "noMatchingWeapon" | "noMatchingTribute";
 }
 
-
 export type TributeBetrayedAlliance = EventBase & {
   type: "TributeBetrayedAlliance";
   betrayerId: TributeId;
@@ -340,3 +339,17 @@ export type Rng = {
 export type RoundActions = Record<TributeId, Action>;
 
 export type Tags = string[];
+
+export type Facts = {
+  attackedYou?: number;
+  lastAttackedYou?: number;
+  lastSeen: { position: ZoneId, round: number };
+  heading?: ZoneId
+  killed?: TributeId[];
+  attacked?: TributeId[];
+  youAttacked?: number;
+  youLastAttacked?: number;
+  diedRound?: number;
+  weaponsSeen?: WeaponDefinition['weaponDefinitionId'][];
+  // Later: alliance facts ("betrayed you", "allied with")
+}

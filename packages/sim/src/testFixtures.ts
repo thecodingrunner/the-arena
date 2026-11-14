@@ -9,6 +9,7 @@ import type {
   TributeId,
   Zone,
 } from "@arena/shared";
+import type { WitnessedEvent } from "./witnessed";
 
 // The arena makeConfig uses. Throws (rather than returning undefined) so tests get a narrowed type.
 export const placeholderArena: ArenaDefinition = (() => {
@@ -150,4 +151,12 @@ export function zoneOf(state: GameState, tributeIndex: number): Zone {
   const zone = state.zones.find((z) => z.zoneId === tribute.position);
   if (!zone) throw new Error(`zone ${tribute.position} is not in state.zones`);
   return zone;
+}
+
+export function ev<E extends WitnessedEvent>(
+  e: Omit<E, "matchId" | "seq" | "round" | "v">,
+  seq: number = 0,
+  round: number = 1
+): E {
+  return { matchId: "match-1", seq: seq++, round: round, v: 1, ...e } as E;
 }
