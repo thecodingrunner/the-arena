@@ -45,5 +45,8 @@ Check this against the log at the end of each week. The **hours** column is the 
 | 2026-11-09 |   8   | 3.9         | random agents arch and perceive tests             |       |
 | 2026-11-10 |   9.5 | 5.6         | match end and match loop                          |       |
 | 2026-11-11 |   8   | 3.4         | match end and match loop                          |       |
+| 2026-11-12 |   7   | 3.7         | fallback                                          |       |
+| 2026-11-13 |   7   | 3.5         | visibility and witnessed                          |       |
+| 2026-11-14 |   3   | 0.9         | long-term memory facts                            |       |
 
-**Running total:** 90 / 250 hours (to 2026-11-11)
+**Running total:** 107 / 250 hours (to 2026-11-13)
