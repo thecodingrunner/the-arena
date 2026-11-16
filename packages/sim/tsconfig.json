@@ -1,4 +1,4 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src", "../shared/src/arenas.test.ts"]
+  "include": ["src", "../shared/src/arenas.test.ts", "../shared/src/sanitisePersonality.test.ts"]
 }

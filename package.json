@@ -8,6 +8,7 @@
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "check": "npm test --workspaces && npm run typecheck --workspaces",
     "lint": "eslint . && npm run lint -w apps/web",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

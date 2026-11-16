@@ -7,8 +7,9 @@ import type {
   TributeDied,
   TributeForaged,
   TributeRested,
+  WitnessedEvent,
 } from "@arena/shared";
-import { witnessed, type UnseenAttack, type WitnessedEvent } from "./witnessed";
+import { witnessed } from "./witnessed";
 import { buildFacts } from "./facts";
 import { createMatch } from "./createMatch";
 
