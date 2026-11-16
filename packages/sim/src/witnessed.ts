@@ -8,15 +8,10 @@ import {
   weaponDefinitions,
   type GameEvent,
   type GameState,
-  type TributeAttacked,
   type TributeId,
+  type WitnessedEvent,
 } from "@arena/shared";
 import { canSee } from "./visibility";
-
-export type UnseenAttack = Omit<TributeAttacked, "attackerId"> & {
-  attackerId: null;
-};
-export type WitnessedEvent = GameEvent | UnseenAttack;
 
 const publicEvents: GameEvent["type"][] = [
   "TributeAttacked",

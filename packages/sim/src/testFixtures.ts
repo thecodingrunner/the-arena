@@ -7,9 +7,9 @@ import type {
   SponsorGift,
   TributeConfig,
   TributeId,
+  WitnessedEvent,
   Zone,
 } from "@arena/shared";
-import type { WitnessedEvent } from "./witnessed";
 
 // The arena makeConfig uses. Throws (rather than returning undefined) so tests get a narrowed type.
 export const placeholderArena: ArenaDefinition = (() => {

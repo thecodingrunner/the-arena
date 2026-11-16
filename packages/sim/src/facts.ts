@@ -1,5 +1,4 @@
-import type { Facts, TributeId } from "@arena/shared";
-import type { WitnessedEvent } from "./witnessed";
+import type { Facts, TributeId, WitnessedEvent } from "@arena/shared";
 
 export function buildFacts(
   witnessedEvents: WitnessedEvent[],

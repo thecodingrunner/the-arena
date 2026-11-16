@@ -6,3 +6,4 @@ export { resolveRound } from "./resolveRound";
 export { perceive } from "./perceive";
 export { MAX_ROUNDS } from "./rules";
 export { witnessed } from "./witnessed";
+export { remember } from "./remember";

@@ -353,3 +353,10 @@ export type Facts = {
   weaponsSeen?: WeaponDefinition['weaponDefinitionId'][];
   // Later: alliance facts ("betrayed you", "allied with")
 }
+
+export type UnseenAttack = Omit<TributeAttacked, "attackerId"> & {
+  attackerId: null;
+};
+export type WitnessedEvent = GameEvent | UnseenAttack;
+
+export type Memory = { recent: WitnessedEvent[]; facts: Record<TributeId, Facts> };

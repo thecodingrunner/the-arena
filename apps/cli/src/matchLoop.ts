@@ -8,6 +8,7 @@ import type {
 } from "@arena/shared";
 import { MAX_ROUNDS, perceive, resolveRound } from "@arena/sim";
 
+
 export function runMatch(
   initialState: GameState,
   decide: (perception: Perception) => Action,
