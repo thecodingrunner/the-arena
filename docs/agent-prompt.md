@@ -323,22 +323,11 @@ Arena changes: zones flood or close over time
 { type: "propose_alliance", tributeId: string }
 { type: "accept_alliance", proposerId: string }
 
-## user messages
+## user prompt
 
 `
-These are different every round for this tribute:
-
-This is your perception snapshot:
-
-These tributes have proposed to form an alliance: 
-${pendingProposals.join(", ")}
-If you ignore the proposal, the alliance is not formed, and your selected action will be submitted.
-
 Your health points are: ${hp}
 Your hunger is: ${hunger}
-
-You are in an alliance with the following tributes:
-${alliances.flatmap().join(", ")}
 
 These are the tributes you have spotted in the same zone as you:
 ${spottedTributes.join(", ")}
@@ -355,7 +344,6 @@ This is your memory in order of how it played out so far:
 ${memory.map((item, index) => `${index + 1}. ${item}`).join("\n")}
 
 This is this is the current round: ${round}
-This is the current phase: ${phase}
 
 Available this round:
 ${spottedTributes?.length > 0 && `- hunt: ${spottedTributes.join(", ")}`}
@@ -363,6 +351,15 @@ ${adjacentZones?.length > 0 && `- move_to: ${adjacentZones.join(", ")}`}
 ${pendingProposals?.length > 0 && - accept_alliance: ${pendingProposals.join(", ")}`}
 - forage, hide, rest
 `
+
+Alliance and zone hazard parts for steps 10 and 11:
+
+These tributes have proposed to form an alliance: 
+${pendingProposals.join(", ")}
+If you ignore the proposal, the alliance is not formed, and your selected action will be submitted.
+
+You are in an alliance with the following tributes:
+${alliances.flatmap().join(", ")}
 
 
 ## response schema

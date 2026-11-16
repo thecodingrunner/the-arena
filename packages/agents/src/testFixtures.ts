@@ -1,4 +1,4 @@
-import type { Perception } from "@arena/shared";
+import type { Perception, WitnessedEvent } from "@arena/shared";
 
 // Builds a valid, unremarkable Perception: every action type is possible
 // (food to forage, two zones to move to, one tribute to hunt).
@@ -38,4 +38,12 @@ export function makePerception(
     ],
     ...overrides,
   };
+}
+
+export function ev<E extends WitnessedEvent>(
+  e: Omit<E, "matchId" | "seq" | "round" | "v">,
+  seq: number = 0,
+  round: number = 1
+): E {
+  return { matchId: "match-1", seq: seq++, round: round, v: 1, ...e } as E;
 }
