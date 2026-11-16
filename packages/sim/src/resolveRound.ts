@@ -1,5 +1,7 @@
 import {
   arenaDefinitions,
+  MAX_HP,
+  MAX_HUNGER,
   weaponDefinitions,
   type Action,
   type GameEvent,
@@ -29,8 +31,6 @@ import {
   HUNGER_VALUE,
   INITIATIVE_DIE,
   MAX_HIT_CHANCE,
-  MAX_HP,
-  MAX_HUNGER,
   MIN_DAMAGE,
   MIN_HIT_CHANCE,
   SPOTTING_DIE,

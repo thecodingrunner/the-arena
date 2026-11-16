@@ -1,5 +1,7 @@
 import {
   arenaDefinitions,
+  STARTING_HP,
+  STARTING_HUNGER,
   weaponDefinitions,
   type GameState,
   type MatchConfig,
@@ -8,7 +10,6 @@ import {
   type ZoneId,
 } from "@arena/shared";
 import { createRng } from "./rng";
-import { STARTING_HP, STARTING_HUNGER } from "./rules";
 
 export function createMatch({
   matchId,

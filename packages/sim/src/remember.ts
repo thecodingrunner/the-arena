@@ -1,8 +1,6 @@
-import type { GameEvent, GameState, Memory, TributeId } from "@arena/shared";
+import { RECENT_ROUNDS, type GameEvent, type GameState, type Memory, type TributeId } from "@arena/shared";
 import { witnessed } from "./witnessed";
 import { buildFacts } from "./facts";
-
-export const RECENT_ROUNDS = 3;
 
 export function remember(
   initialState: GameState,

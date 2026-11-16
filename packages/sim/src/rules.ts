@@ -1,7 +1,3 @@
-export const MAX_HP = 100;
-export const STARTING_HP = MAX_HP; // tributes start at full health
-export const MAX_HUNGER = 100;
-export const STARTING_HUNGER = 0;
 export const INITIATIVE_DIE = 5;
 export const FORAGE_MAX_CHANCE = 0.9;
 export const FORAGE_BASE_CHANCE = 0.4;

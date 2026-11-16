@@ -1,11 +1,11 @@
 import {
+  MAX_HP,
   sponsorItemDefinitions,
   type SponsorGift,
   type Tribute,
   type WeaponInstance,
 } from "@arena/shared";
 import type { Ctx } from "./ctx";
-import { MAX_HP } from "./rules";
 
 export function resolveGifts(ctx: Ctx, gifts: SponsorGift[]): void {
   const { emitEvent, copiedGameState } = ctx;

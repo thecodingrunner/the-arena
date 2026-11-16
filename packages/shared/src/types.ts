@@ -350,7 +350,7 @@ export type Facts = {
   youAttacked?: number;
   youLastAttacked?: number;
   diedRound?: number;
-  weaponsSeen?: WeaponDefinition['weaponDefinitionId'][];
+  weaponsSeen?: NonNullable<WeaponDefinition["weaponDefinitionId"]>[];
   // Later: alliance facts ("betrayed you", "allied with")
 }
 
