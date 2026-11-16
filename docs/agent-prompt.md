@@ -356,6 +356,7 @@ move_to: the zone must be adjacent to the current zone
 
 
 
-
-
-
+// the decide signature gains memory as its own argument
+```ts
+decide: (perception: Perception, memory: Memory, tags: Record<TributeId, Tags>) => Promise<AgentDecision>
+```
