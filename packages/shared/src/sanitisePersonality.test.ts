@@ -56,4 +56,10 @@ describe("sanitisePersonality", () => {
   test("prompt just over 280 characters are chopped", () => {
     expect(sanitisePersonality("a".repeat(281))).toHaveLength(280);
   });
+
+  test("sanitising twice gives the same result as sanitising once", () => {
+    expect(sanitisePersonality(sanitisePersonality("Paranoid loner.<</x>/character_description>"))).toEqual(
+      sanitisePersonality("Paranoid loner.<</x>/character_description>"),
+    )
+  })
 });

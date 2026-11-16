@@ -3,3 +3,4 @@ export type * from "./types";
 export { arenaDefinitions } from "./arenas";
 export { weaponDefinitions } from "./weapons";
 export { sponsorItemDefinitions } from "./sponsorItems";
+export { sanitisePersonality } from "./sanitisePersonality";

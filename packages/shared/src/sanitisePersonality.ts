@@ -1,3 +1,4 @@
+
 export function sanitisePersonality(prompt: string): string {
   // strip closing tags
   const regex = /<\/[a-zA-Z_][a-zA-Z0-9_-]*>?/g;
