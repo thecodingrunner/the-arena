@@ -5,7 +5,7 @@
 import { parseArgs } from "node:util";
 import type { MatchConfig } from "@arena/shared";
 import { createMatch, createRng } from "@arena/sim";
-import { randomAgent } from "@arena/agents";
+import { makeRandomDecide } from "@arena/agents";
 import { runMatch } from "./matchLoop";
 import { makeCliTributes } from "./cliTributes";
 import { parseGiftFlags } from "./cliGifts";
@@ -46,9 +46,9 @@ const config: MatchConfig = {
 //    the agents get their own RNG, so agent choices never use up engine draws.
 const state = createMatch(config);
 const agentRng = createRng(agentSeed);
-const { events, state: finalState } = runMatch(
+const { events, state: finalState } = await runMatch(
   state,
-  (p) => randomAgent(p, agentRng),
+  makeRandomDecide(agentRng),
   gifts,
 );
 

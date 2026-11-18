@@ -173,6 +173,4 @@ describe("convertTagUpdates", () => {
 
     expect(result.t3).toEqual(["a", "b"]);
   })
-
-  test.todo("a tribute not in the update change-list keeps its old tags");
 });

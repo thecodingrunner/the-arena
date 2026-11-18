@@ -1,9 +1,18 @@
-import type { GameEvent, MatchConfig, SponsorGift } from "@arena/shared";
+import type {
+  AgentDecision,
+  Decide,
+  GameEvent,
+  MatchConfig,
+  Memory,
+  SponsorGift,
+  Tags,
+  TributeId,
+} from "@arena/shared";
 import { describe, expect, test } from "vitest";
 import { makeCliTributes } from "./cliTributes";
 import { createMatch, createRng, MAX_ROUNDS, resolveRound } from "@arena/sim";
 import { runMatch } from "./matchLoop";
-import { randomAgent } from "@arena/agents";
+import { makeDecide, makeRandomDecide } from "@arena/agents";
 
 // The loop
 // - given an ended state, runMatch throws an error
@@ -14,7 +23,7 @@ import { randomAgent } from "@arena/agents";
 // - the replay gives an identical log
 
 describe("matchLoop", () => {
-  test("given an ended state, runMatch throws an error", () => {
+  test("given an ended state, runMatch throws an error", async () => {
     const state = createMatch({
       matchId: "match-1",
       arenaId: "placeholder",
@@ -31,14 +40,14 @@ describe("matchLoop", () => {
 
     const agentRng = createRng(0);
 
-    expect(() => runMatch(state, (p) => randomAgent(p, agentRng))).toThrow(
+    await expect(runMatch(state, makeRandomDecide(agentRng))).rejects.toThrow(
       "Match already ended",
     );
   });
 
   test.each([8, 16, 24])(
     "%i tributes: the same seed with recorded decisions produces an identical event log",
-    (tributeCount) => {
+    async (tributeCount) => {
       for (let seed = 0; seed < 5; seed++) {
         const config: MatchConfig = {
           matchId: "match-1",
@@ -55,7 +64,7 @@ describe("matchLoop", () => {
           state: finalState,
           actions,
           events,
-        } = runMatch(state, (p) => randomAgent(p, agentRng));
+        } = await runMatch(state, makeRandomDecide(agentRng));
 
         const replayEvents: GameEvent[] = [];
         let replayState = copiedState;
@@ -82,7 +91,7 @@ describe("matchLoop", () => {
     },
   );
 
-  test("at least some matches end by lastStanding or draw, not all by timeout", () => {
+  test("at least some matches end by lastStanding or draw, not all by timeout", async () => {
     let endedByLastStanding = 0;
     let endedByDraw = 0;
 
@@ -98,8 +107,9 @@ describe("matchLoop", () => {
         const state = createMatch(config);
 
         const agentRng = createRng(seed);
-        const { state: finalState } = runMatch(state, (p) =>
-          randomAgent(p, agentRng),
+        const { state: finalState } = await runMatch(
+          state,
+          makeRandomDecide(agentRng),
         );
 
         if (finalState.result?.kind === "lastStanding") {
@@ -117,7 +127,7 @@ describe("matchLoop", () => {
     }
   });
 
-  test("the game runs to completion, exactly one MatchEnded event emitted, never throws, never goes past MAX_ROUNDS (8 to 24 tributes)", () => {
+  test("the game runs to completion, exactly one MatchEnded event emitted, never throws, never goes past MAX_ROUNDS (8 to 24 tributes)", async () => {
     for (let seed = 0; seed < 5; seed++) {
       for (let tributeCount = 8; tributeCount < 25; tributeCount++) {
         const config: MatchConfig = {
@@ -130,8 +140,9 @@ describe("matchLoop", () => {
         const state = createMatch(config);
 
         const agentRng = createRng(seed);
-        const { state: finalState, events } = runMatch(state, (p) =>
-          randomAgent(p, agentRng),
+        const { state: finalState, events } = await runMatch(
+          state,
+          makeRandomDecide(agentRng),
         );
 
         expect(finalState.result).not.toBe(null);
@@ -142,7 +153,7 @@ describe("matchLoop", () => {
     }
   });
 
-  test("exactly one action per living tribute, and none for dead tributes", () => {
+  test("exactly one action per living tribute, and none for dead tributes", async () => {
     let deathsOccured = 0;
 
     for (let i = 8; i <= 24; i++) {
@@ -155,8 +166,9 @@ describe("matchLoop", () => {
 
       const state = createMatch(config);
       const agentRng = createRng(0);
-      const { actions, state: finalState } = runMatch(state, (p) =>
-        randomAgent(p, agentRng),
+      const { actions, state: finalState } = await runMatch(
+        state,
+        makeRandomDecide(agentRng),
       );
 
       for (let k = 0; k < actions.length; k++) {
@@ -178,7 +190,7 @@ describe("matchLoop", () => {
   // gifts
   test.each([8, 24])(
     "a gift injected from the CLI changes the outcome of later rounds, and never earlier ones",
-    (tributeCount) => {
+    async (tributeCount) => {
       let delivered = 0;
       let undelivered = 0;
 
@@ -205,14 +217,14 @@ describe("matchLoop", () => {
 
         const agentRngWith = createRng(seed);
         const agentRngWithout = createRng(seed);
-        const { state: finalStateWith, events: withGift } = runMatch(
+        const { state: finalStateWith, events: withGift } = await runMatch(
           stateWith,
-          (p) => randomAgent(p, agentRngWith),
+          makeRandomDecide(agentRngWith),
           [gift],
         );
-        const { state: finalStateWithout, events: without } = runMatch(
+        const { state: finalStateWithout, events: without } = await runMatch(
           stateWithout,
-          (p) => randomAgent(p, agentRngWithout),
+          makeRandomDecide(agentRngWithout),
         );
 
         expect(finalStateWith.result).not.toBe(null);
@@ -252,4 +264,146 @@ describe("matchLoop", () => {
       expect(undelivered).toBeGreaterThan(0);
     },
   );
+
+  test("Tags carry over: the tags a decision returns in round N reach decide in round N+1. old tags about other targets survive an update.", async () => {
+    const state = createMatch({
+      matchId: "match-1",
+      arenaId: "placeholder",
+      seed: 1,
+      tributes: makeCliTributes(8),
+    });
+
+    const received: Record<number, Record<TributeId, Tags>> = {};
+
+    const updatesForT1: Record<number, Record<TributeId, Tags>> = {
+      1: { t2: ["a", "b"] },
+      2: { t3: ["c", "d"] },
+    };
+
+    const fakeDecide: Decide = async (perception, _memory, tags) => {
+      const id = perception.self.tributeId;
+      if (id === "t1") received[perception.round] = tags;
+
+      return {
+        source: "llm",
+        action: { type: "rest" },
+        line: "",
+        tagUpdates: id === "t1" ? (updatesForT1[perception.round] ?? {}) : {},
+      };
+    };
+
+    await runMatch(state, fakeDecide);
+
+    expect(received[2]).toEqual({ t2: ["a", "b"] });
+    expect(received[3]).toEqual({ t2: ["a", "b"], t3: ["c", "d"] });
+  });
+
+  test("Memory carries over: in round 2, the fake's memory contains a round-1 event it witnessed.", async () => {
+    const state = createMatch({
+      matchId: "match-1",
+      arenaId: "placeholder",
+      seed: 1,
+      tributes: makeCliTributes(8),
+    });
+
+    const memories: Record<number, Memory> = {};
+
+    const fakeDecide: Decide = async (perception, memory, _tags) => {
+      if (perception.self.tributeId === "t1")
+        memories[perception.round] = memory;
+
+      return {
+        source: "llm",
+        action: { type: "rest" },
+        line: "",
+        tagUpdates: {},
+      };
+    };
+
+    await runMatch(state, fakeDecide);
+
+    expect(memories[2]?.recent).toContainEqual(
+      expect.objectContaining({
+        type: "TributeRested",
+        tributeId: "t1",
+        round: 1,
+      }),
+    );
+  });
+
+  test("Decisions are recorded, one record per round, keyed by id.", async () => {
+    const state = createMatch({
+      matchId: "match-1",
+      arenaId: "placeholder",
+      seed: 1,
+      tributes: makeCliTributes(8),
+    });
+
+    const fakeDecide: Decide = async () => ({
+      source: "llm",
+      action: { type: "rest" },
+      line: "",
+      tagUpdates: {},
+    });
+
+    const {
+      decisions,
+      actions,
+    } = await runMatch(state, fakeDecide);
+
+    expect(decisions).toBeDefined();
+    expect(decisions.length).toEqual(actions.length);
+    for (const tribute of state.tributes.filter((t) => t.alive)) {
+      expect(decisions[0]![tribute.tributeId]).toBeDefined();
+    }
+    expect(decisions[0]!.t1).toEqual({
+      source: "llm",
+      action: { type: "rest" },
+      line: "",
+      tagUpdates: {},
+    });
+  });
+
+  function makeRecordedDecide(
+    decisions: Record<TributeId, AgentDecision>[],
+  ): Decide {
+    return async (perception) => {
+      const id = perception.self.tributeId;
+      const decision = decisions[perception.round]?.[id];
+      if (!decision)
+        throw new Error(`No decision for ${id} in round ${perception.round}`);
+      return decision;
+    };
+  }
+
+  test("Replay: run a match, then run it again with a decide that just returns the recorded decisions. The events should be identical.", async () => {
+    const state = createMatch({
+      matchId: "match-1",
+      arenaId: "placeholder",
+      seed: 1,
+      tributes: makeCliTributes(8),
+    });
+
+    const {
+      state: finalState,
+      decisions,
+      events,
+    } = await runMatch(state, makeRandomDecide(createRng(1)));
+
+    const replayState = createMatch({
+      matchId: "match-1",
+      arenaId: "placeholder",
+      seed: 1,
+      tributes: makeCliTributes(8),
+    });
+
+    const { state: replayFinalState, events: replayEvents } = await runMatch(
+      replayState,
+      makeRecordedDecide(decisions),
+    );
+
+    expect(replayFinalState).toEqual(finalState);
+    expect(replayEvents).toEqual(events);
+    expect(events).toContainEqual(expect.objectContaining({ type: "TributeDied" }));
+  });
 });

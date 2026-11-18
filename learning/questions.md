@@ -46,3 +46,6 @@ Keep unresolved questions concise. Add a date or context when it helps.
 
 ## 2026-11-08: if we no longer have use_item, do we really need sponsor items in the InventoryItem union or can we remove it?
 
+## 2026-11-18: why did the cache read of 1808 versus a prompt of 992 tokens? and could we write a cold-cache experiment to explain it?
+
+

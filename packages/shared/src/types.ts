@@ -394,6 +394,14 @@ export type AgentDecision =
       action: Action;
       line: string;
       tagUpdates: Record<TributeId, Tags>;
+    }
+  | {
+      source: "random";
+      action: Action;
+      line: string;
+      tagUpdates: Record<TributeId, Tags>;
     };
 
 export type ModelFailureReason = (typeof MODEL_FAILURE_REASONS)[number];
+
+export type Decide = (perception: Perception, memory: Memory, tags: Record<TributeId, Tags>) => Promise<AgentDecision>;

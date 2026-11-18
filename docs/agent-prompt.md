@@ -55,16 +55,16 @@ type ModelResult = {
     reason: "refusal" | "rateLimit" | "apiError" | "timeout" | "maxTokens"
 };
 
-async function runMatch(
-    state, 
-    decide: (perception: Perception, tags: Record<TributeId, Tags>) => Promise<AgentDecision>,
-    gifts
-): Promise<{ 
-    state, 
-    events, 
-    decisions: Record<TributeId, AgentDecision>[] 
+export async function runMatch(
+  initialState: GameState,
+  decide: Decide,
+  gifts: SponsorGift[] = [],
+): Promise<{
+  state: GameState;
+  actions: RoundActions[];
+  events: GameEvent[];
+  decisions: Record<TributeId, AgentDecision>[];
 }> {
-
 }
 
 conversion return type:

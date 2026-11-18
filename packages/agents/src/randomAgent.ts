@@ -1,4 +1,13 @@
-import type { Action, Perception, Rng } from "@arena/shared";
+import type { Action, AgentDecision, Decide, Perception, Rng } from "@arena/shared";
+
+export function makeRandomDecide(agentRng: Rng): Decide {
+  return async (perception) => ({
+    source: "random",
+    action: randomAgent(perception, agentRng),
+    line: "",
+    tagUpdates: {},
+  });
+}
 
 export function randomAgent(perception: Perception, agentRng: Rng): Action {
   // hunting scales with crowd size, agent's bias is not a property of the engine
