@@ -120,10 +120,15 @@ export type Action =
   | { type: "hide" }
   | { type: "rest" }
   | { type: "hunt"; targetId: TributeId }
+  | { type: "move_to"; zoneId: ZoneId }
   | { type: "betray"; allyId: TributeId }
   | { type: "propose_alliance"; tributeId: TributeId }
-  | { type: "accept_alliance"; proposerId: TributeId }
-  | { type: "move_to"; zoneId: ZoneId };
+  | { type: "accept_alliance"; proposerId: TributeId };
+
+type LlmAction = Exclude<
+  Action,
+  { type: "betray" | "propose_alliance" | "accept_alliance" }
+>;
 
 // Engine input (not an Action): applied at the first round that hasn't been simulated yet
 export type SponsorGift = {
@@ -368,7 +373,7 @@ export type Memory = {
 
 export type LlmResponse = {
   intent: string;
-  action: Action;
+  action: LlmAction;
   tagUpdates: { tributeId: string; tags: string[] }[];
   line: string;
 };
