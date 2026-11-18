@@ -47,6 +47,14 @@ type LlmResponse = {
     line: string;
 }
 
+type ModelResult = {
+    kind: "reply",
+    llmResponse: LlmResponse,
+} | {
+    kind: "failure",
+    reason: "refusal" | "rateLimit" | "apiError" | "timeout" | "maxTokens"
+};
+
 async function runMatch(
     state, 
     decide: (perception: Perception, tags: Record<TributeId, Tags>) => Promise<AgentDecision>,
@@ -380,3 +388,23 @@ move_to: the zone must be adjacent to the current zone
 ```ts
 decide: (perception: Perception, memory: Memory, tags: Record<TributeId, Tags>) => Promise<AgentDecision>
 ```
+
+# Call Model Errors
+
+| Fallback and continue (a problem with this call) | Rethrow (a problem with the code or setup) |
+| ----- | ------------- |
+| 429 rate limit (after the SDK's retries) | 400 bad request |
+| 500 / 529 server error or overloaded | 401 / 403 authentication or permission |
+| timeout, no connection | Anthropic's 402 billing / spend limit |
+| (no error) refusal, max_tokens | (no error) refusal, max_tokens |
+
+| Error | Example cause |
+| ----- | ------------- |
+| 429 rate limit | too many parallel calls |
+| 529 overloaded / 500 server error | Anthropic is having a bad minute |
+| timeout / no connection | network blip |
+| 400 bad request | e.g. you sent max_tokens: 200000, or a schema the API rejects |
+| 401 authentication | the API key is missing or wrong in Coolify |
+
+- Anthropic.APIError is the base class for anything the API returned, with subclasses such as RateLimitError (429), BadRequestError (400), AuthenticationError (401) and InternalServerError (5xx).
+- Anthropic.APIConnectionError means the request never got a response. I believe there's also a timeout subclass, APIConnectionTimeoutError; check node_modules/@anthropic-ai/sdk to confirm.

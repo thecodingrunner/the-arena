@@ -50,4 +50,4 @@ Check this against the log at the end of each week. The **hours** column is the 
 | 2026-11-14 |   3   | 0.9         | long-term memory facts                            |       |
 | 2026-11-16 |   8.5 | 2.4         | long-term memory facts                            |       |
 
-**Running total:** 107 / 250 hours (to 2026-11-13)
+**Running total:** 118.5 / 250 hours (to 2026-11-13)

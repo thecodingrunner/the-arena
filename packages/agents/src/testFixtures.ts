@@ -1,4 +1,11 @@
-import type { Perception, WitnessedEvent } from "@arena/shared";
+import type {
+  LlmResponse,
+  ModelFailureReason,
+  Perception,
+  TributeConfig,
+  WitnessedEvent,
+} from "@arena/shared";
+import type { ModelResult } from "./modelResult";
 
 // Builds a valid, unremarkable Perception: every action type is possible
 // (food to forage, two zones to move to, one tribute to hunt).
@@ -46,4 +53,49 @@ export function ev<E extends WitnessedEvent>(
   round: number = 1
 ): E {
   return { matchId: "match-1", seq: seq++, round: round, v: 1, ...e } as E;
+}
+
+// A valid, unremarkable TributeConfig. The tributeId matches makePerception's self ("t1").
+// Override only what a test cares about: makeTributeConfig({ tributeId: "t2", name: "Mara" })
+export function makeTributeConfig(
+  overrides: Partial<TributeConfig> = {},
+): TributeConfig {
+  return {
+    tributeId: "t1",
+    name: "Kael",
+    personality: "Cautious and observant.",
+    stats: {
+      strength: 5,
+      agility: 5,
+      charisma: 5,
+      endurance: 5,
+      intelligence: 5,
+      stealth: 5,
+    },
+    origin: "Saltworks",
+    startingWeaponDefId: "spear",
+    owner: null,
+    ...overrides,
+  };
+}
+
+// A ModelResult for a successful reply. The defaults are legal for makePerception():
+// rest needs no target, the line is short and there are no tag updates.
+// Override only the fields a test cares about: replyWith({ action: { type: "hunt", targetId: "t2" } })
+export function replyWith(overrides: Partial<LlmResponse> = {}): ModelResult {
+  return {
+    kind: "reply",
+    llmResponse: {
+      intent: "Rest and wait.",
+      action: { type: "rest" },
+      tagUpdates: [],
+      line: "I'll wait here.",
+      ...overrides,
+    },
+  };
+}
+
+// A ModelResult for a failed call: failureWith("refusal")
+export function failureWith(reason: ModelFailureReason): ModelResult {
+  return { kind: "failure", reason };
 }

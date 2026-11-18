@@ -1,5 +1,7 @@
 // Transcribed from docs/data-model.md. Keep the two in sync.
 
+import type { GAME_GATE_REASONS, MODEL_FAILURE_REASONS } from "./reasons";
+
 export type PlayerId = string;
 export type TributeId = string;
 export type ZoneId = string;
@@ -132,9 +134,9 @@ export type SponsorGift = {
   appliesInRound: number;
 };
 
-export type SponsorItemEffect = 
-  | { kind: "hunger", amount: number }
-  | { kind: "health", amount: number }
+export type SponsorItemEffect =
+  | { kind: "hunger"; amount: number }
+  | { kind: "health"; amount: number }
   | { kind: "ammunition"; weaponDefinitionId: string; amount: number };
 
 export type SponsorItemDefinition = {
@@ -142,7 +144,7 @@ export type SponsorItemDefinition = {
   name: string;
   cost: number;
   effects: SponsorItemEffect[];
-}
+};
 
 // Outcomes: past tense, versioned. "Changed" events carry the delta and the new value.
 type EventBase = {
@@ -236,7 +238,7 @@ export type SponsorGiftUndelivered = EventBase & {
   giftId: string;
   to: TributeId;
   reason: "recipientDead" | "noMatchingWeapon" | "noMatchingTribute";
-}
+};
 
 export type TributeBetrayedAlliance = EventBase & {
   type: "TributeBetrayedAlliance";
@@ -343,8 +345,8 @@ export type Tags = string[];
 export type Facts = {
   attackedYou?: number;
   lastAttackedYou?: number;
-  lastSeen: { position: ZoneId, round: number };
-  heading?: ZoneId
+  lastSeen: { position: ZoneId; round: number };
+  heading?: ZoneId;
   killed?: TributeId[];
   attacked?: TributeId[];
   youAttacked?: number;
@@ -352,11 +354,41 @@ export type Facts = {
   diedRound?: number;
   weaponsSeen?: NonNullable<WeaponDefinition["weaponDefinitionId"]>[];
   // Later: alliance facts ("betrayed you", "allied with")
-}
+};
 
 export type UnseenAttack = Omit<TributeAttacked, "attackerId"> & {
   attackerId: null;
 };
 export type WitnessedEvent = GameEvent | UnseenAttack;
 
-export type Memory = { recent: WitnessedEvent[]; facts: Record<TributeId, Facts> };
+export type Memory = {
+  recent: WitnessedEvent[];
+  facts: Record<TributeId, Facts>;
+};
+
+export type LlmResponse = {
+  intent: string;
+  action: Action;
+  tagUpdates: { tributeId: string; tags: string[] }[];
+  line: string;
+};
+
+export type GameGateReason = (typeof GAME_GATE_REASONS)[number];
+export type FallbackReason = ModelFailureReason | GameGateReason;
+
+export type AgentDecision =
+  | {
+      source: "llm";
+      action: Action;
+      line: string;
+      tagUpdates: Record<TributeId, Tags>;
+    }
+  | {
+      source: "fallback";
+      reason: FallbackReason;
+      action: Action;
+      line: string;
+      tagUpdates: Record<TributeId, Tags>;
+    };
+
+export type ModelFailureReason = (typeof MODEL_FAILURE_REASONS)[number];

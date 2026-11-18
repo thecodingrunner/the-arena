@@ -18,8 +18,7 @@ import {
   type WitnessedEvent,
 } from "@arena/shared";
 import { MAX_TAG_LENGTH, MAX_TAGS_PER_TRIBUTE } from "./convertTagUpdates";
-
-const MAX_LINE_LENGTH = 200;
+import { MAX_LINE_LENGTH } from "@arena/shared/src/rules";
 
 export function buildSystemPrompt(tribute: {
   name: string;
