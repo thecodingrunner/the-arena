@@ -18,7 +18,7 @@ import {
   type WitnessedEvent,
 } from "@arena/shared";
 import { MAX_TAG_LENGTH, MAX_TAGS_PER_TRIBUTE } from "./convertTagUpdates";
-import { MAX_LINE_LENGTH } from "@arena/shared/src/rules";
+import { HEALTH_PER_REST, HUNGER_HEALTH_COST, HUNGER_PER_MOVE_COST, HUNGER_TICK, HUNGER_VALUE, MAX_LINE_LENGTH } from "@arena/shared/src/rules";
 
 export function buildSystemPrompt(tribute: {
   name: string;
@@ -34,15 +34,18 @@ Game rules:
 You choose what to attempt; the arena decides what happens. 
 You win by being the last tribute alive
 You start with 100hp, which is also the maximum, you can die by running out of health (hp)
-Your hunger level increases each round, after hitting 100, you start to lose hp. You can forage to reduce your hunger level.
+Your hunger rises by ${HUNGER_TICK} each round, after hitting ${MAX_HUNGER}, you start to lose hp (-${HUNGER_HEALTH_COST}hp per round).
 You can lose health by being attacked by other tributes, or from hunger
-When you choose to hide, you reduce your chances of being spotted by other tributes
 You can only move to adjacent zones, and some paths are one-way
 Sponsors may send items such as:
 ${sponsorItemDefinitions.map((g) => `- ${g.name}: ${g.effects.map((e) => `${e.kind} ${e.amount}`).join(", ")}`).join("\n")}
-Resting gives + 10hp, which exactly cancels the starvation damage.
-Foraging lowers hunger, food lowers more than water, and foraging can fail.
-Hiding only lasts for the round you hide in. It protects you from tributes who act after you in that round, not the next round.
+
+The impact of each action:
+Resting gives +${HEALTH_PER_REST}hp.
+Foraging lowers hunger, food (-${HUNGER_VALUE.food} hunger) lowers more than water (-${HUNGER_VALUE.water} hunger), and foraging can fail.
+Hiding makes you harder to spot, for this round only. It protects you from tributes who act after you.
+Only tributes that were in the same zone at the start of the round can attack you, so if no tributes are listed under 'Tributes here', no one can attack you this round.
+Moving to another zone increases your hunger (+${HUNGER_PER_MOVE_COST} per move cost, reduced by your endurance stat) on top of the usual rise each round.
 
 The impact of stats on the game and action success:
 Stealth helps the hider avoid being found by the attacker
@@ -57,9 +60,9 @@ ${weaponSection()}
 
 The action menu:
 { type: "forage" }
-{ type: "hide" }
+{ type: "hide" } 
 { type: "rest" }
-{ type: "hunt", targetId: string }
+{ type: "hunt", targetId: string } 
 { type: "move_to", zoneId: string }
 
 For the output:
@@ -109,7 +112,7 @@ ${listNewlineOrNone(factsSection(facts, tributeId, names))}
 Your tags:
 ${listNewlineOrNone(tagsSection(tags, tributeId, names))}
 
-You now: hp ${hp}/${MAX_HP} · hunger ${hunger}/${MAX_HUNGER} · inventory: ${listOrNone(inventorySection(inventory))}
+You now: hp ${hp}/${MAX_HP} · hunger ${hunger}/${MAX_HUNGER} (higher is worse)${hunger >= MAX_HUNGER ? ": starving, losing hp every round" : ""} · inventory: ${listOrNone(inventorySection(inventory))}
 Your zone: ${zoneId} · food ${food} · water ${water} · cover ${cover}
 Tributes here:
 ${listNewlineOrNone(visibleTributes.map((t) => `${t.name} (${t.tributeId})${t.hidLastRound ? ", hid last round" : ""}`))}

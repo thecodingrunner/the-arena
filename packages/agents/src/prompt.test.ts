@@ -11,6 +11,7 @@ import {
   weaponSection,
 } from "./prompt";
 import {
+  HEALTH_PER_REST,
   weaponDefinitions,
   type Facts,
   type InventoryItem,
@@ -122,6 +123,23 @@ describe("prompt", () => {
 
     expect(promptOne).not.toContain("betray");
     expect(promptOne).not.toContain("propose_alliance");
+  });
+
+  test("rest line contains HEALTH_PER_REST constant", () => {
+    const prompt = buildSystemPrompt({
+      name: "tributeOne",
+      personality: "Cautious and observant.",
+      stats: {
+        strength: 1,
+        agility: 9,
+        charisma: 2,
+        endurance: 8,
+        intelligence: 5,
+        stealth: 5,
+      },
+    });
+
+    expect(prompt).toContain(`Resting gives +${HEALTH_PER_REST}hp`);
   });
 
   // User Prompt
@@ -494,7 +512,7 @@ describe("prompt", () => {
     expect(recentSection([], "t1", names)).toEqual([]);
   });
 
-    test("a round with only skipped events produces no heading", () => {
+  test("a round with only skipped events produces no heading", () => {
     const events = [
       ev(
         {
@@ -540,7 +558,10 @@ describe("prompt", () => {
       ) as TributeRested,
     ];
 
-    expect(recentSection(events, "t1", names)).toEqual(["Round 2:", "Mara (t2) rested."]);
+    expect(recentSection(events, "t1", names)).toEqual([
+      "Round 2:",
+      "Mara (t2) rested.",
+    ]);
   });
 
   // factsSection
@@ -612,7 +633,7 @@ describe("prompt", () => {
     };
 
     expect(() => factsSection(facts, "t1", names)).toThrow("t9");
-  })
+  });
 
   // tagsSection
 
@@ -639,7 +660,7 @@ describe("prompt", () => {
     expect(tagsSection(tags, "t1", names)).toEqual([
       "Kathryn (t4): dangerous, avoid",
     ]);
-  })
+  });
 
   // buildUserMessage
 
@@ -689,7 +710,7 @@ describe("prompt", () => {
           name: "Mara",
           hidLastRound: true,
         },
-                {
+        {
           tributeId: "t4",
           name: "Kathryn",
           hidLastRound: false,
@@ -701,12 +722,9 @@ describe("prompt", () => {
     const names: Record<TributeId, string> = {};
 
     const userMessage = buildUserMessage(perception, memory, tags, names);
-    expect(userMessage).toContain(
-      "Mara (t2), hid last round\n",
-    );
+    expect(userMessage).toContain("Mara (t2), hid last round\n");
     expect(userMessage).not.toContain("Kathryn (t4), hid last round\n");
     expect(userMessage).not.toContain("false");
-
   });
 
   test("the hunt line lists ids, which are what the model must reply with", () => {
@@ -728,9 +746,9 @@ describe("prompt", () => {
     const tags: Record<TributeId, Tags> = {};
     const names: Record<TributeId, string> = {};
 
-    expect(
-      buildUserMessage(perception, memory, tags, names)
-    ).toContain("- hunt: t2, t4");
+    expect(buildUserMessage(perception, memory, tags, names)).toContain(
+      "- hunt: t2, t4",
+    );
   });
 
   test("Round 1:\n appears in user message", () => {

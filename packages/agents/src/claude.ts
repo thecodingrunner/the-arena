@@ -4,8 +4,8 @@ import { z } from "zod/v4";
 import { type LlmResponse } from "@arena/shared";
 import type { CallModel, ModelResult } from "./modelResult";
 
-const MAX_TOKENS = 3000;
-const MODEL_NAME = "claude-haiku-5-5";
+export const MAX_TOKENS = 3000;
+export const MODEL_NAME = "claude-haiku-5-5";
 
 const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("rest") }),
