@@ -223,6 +223,8 @@ Memory event classifications
 | What failed   | The LLM chose something illegal | The world changed since the choice |
 | Response   | Fallback (retry: see open-tasks) | Resolve to a real outcome and emit an event |
 
+After testing: no retries, playtest fallback rate 0%
+
 ## Reasoning
 
 Benefits for adding reasoning:
