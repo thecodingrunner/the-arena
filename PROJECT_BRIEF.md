@@ -314,7 +314,7 @@ Nginx works per *request and connection*, and once a WebSocket is open, messages
 - Each player gets a small **daily allowance of matches they start** (starting idea: 3 a day). A solo match uses one. A match that fails before round 1 doesn't count
 - In multiplayer, **the host's allowance covers the whole room,** so inviting friends costs them nothing. That's the main growth loop
 - Guests' allowance is tracked by guest ID and IP. Signing in ties it to the account, so clearing the browser doesn't reset it
-- Cost reference: write down the measured cost per match from Phase 1 here. Earlier estimates on a cheap model (for example Claude Haiku 5.5 or GPT-5 nano, October 2026 prices) were well under 1p per small match. A free player who uses their whole allowance costs a few pence a day, and most won't use it all. Re-check prices before setting the allowance
+- Cost reference: cost per match from round 1 was 3p for 22 rounds. Earlier estimates on a cheap model (for example Claude Haiku 5.5 or GPT-5 nano, October 2026 prices) were well under 1p per small match. A free player who uses their whole allowance costs a few pence a day, and most won't use it all. Re-check prices before setting the allowance
 
 **Supporter membership (main revenue)** — about £3–4 a month through Clerk Billing:
 - More matches a day, or unlimited within a fair-use cap

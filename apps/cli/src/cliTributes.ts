@@ -12,11 +12,22 @@ export function makeCliTributes(n: number): TributeConfig[] {
     "The Quaries",
     "Hollow Pines",
   ];
+  // Varied so a real LLM match shows different behaviour. The random agent ignores them.
+  const personalities = [
+    "Cautious and observant. Avoids fights unless cornered.",
+    "Bold and aggressive. Hunts anyone who looks weak.",
+    "Practical and steady. Keeps fed and healthy before anything else.",
+    "Paranoid. Trusts no one and stays hidden whenever others are near.",
+    "Opportunistic. Waits for others to weaken each other, then strikes.",
+    "Restless explorer. Keeps moving to find food and an advantage.",
+    "Calm strategist. Weighs risks and picks fights only when the odds are good.",
+    "Reckless and proud. Never backs down from a challenge.",
+  ];
   return Array.from({ length: n }, (_, i) => ({
     tributeId: `t${i + 1}`,
     name: `Tribute ${i + 1}`,
     origin: origins[i % origins.length]!,
-    personality: "",
+    personality: personalities[i % personalities.length]!,
     startingWeaponDefId: weapons[i % weapons.length]!,
     owner: null,
     stats: {

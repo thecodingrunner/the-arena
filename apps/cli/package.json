@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@arena/sim": "*",
     "@arena/agents": "*",
     "@arena/shared": "*"
