@@ -13,6 +13,10 @@ import {
 import {
   HEALTH_PER_REST,
   weaponDefinitions,
+  type AllianceBetrayed,
+  type AllianceFormed,
+  type AllianceProposalFailed,
+  type AllianceProposed,
   type Facts,
   type InventoryItem,
   type MatchEnded,
@@ -22,7 +26,6 @@ import {
   type Tags,
   type TributeAmmunitionChanged,
   type TributeAttacked,
-  type TributeBetrayedAlliance,
   type TributeChangedZone,
   type TributeDied,
   type TributeForaged,
@@ -204,12 +207,6 @@ describe("prompt", () => {
       reason: "noMatchingWeapon",
       location: "centre",
     }) as SponsorGiftUndelivered,
-    ev({
-      type: "TributeBetrayedAlliance",
-      betrayerId: "t1",
-      allianceId: "a2",
-      location: "centre",
-    }) as TributeBetrayedAlliance,
     ev({
       type: "MatchEnded",
       result: {
@@ -462,6 +459,155 @@ describe("prompt", () => {
       }) as TributeAttacked,
       expected: "Mara (t2) attacked Kathryn (t4) and hit.",
     },
+    {
+      event: ev({
+        type: "AllianceBetrayed",
+        betrayerId: "t2",
+        victimId: "t4",
+        allianceId: "a1",
+        outcome: "success",
+        location: "centre",
+      }) as AllianceBetrayed,
+      expected: "Mara (t2) betrayed Kathryn (t4).",
+    },
+    {
+      event: ev({
+        type: "AllianceBetrayed",
+        betrayerId: "t2",
+        victimId: "t4",
+        allianceId: "a1",
+        outcome: "targetGone",
+        location: "centre",
+      }) as AllianceBetrayed,
+      expected:
+        "Mara (t2) attempted to betray Kathryn (t4) but couldn't find Kathryn (t4).",
+    },
+    {
+      event: ev({
+        type: "AllianceBetrayed",
+        betrayerId: "t2",
+        victimId: "t1",
+        allianceId: "a1",
+        outcome: "targetGone",
+        location: "centre",
+      }) as AllianceBetrayed,
+      expected: "Mara (t2) attempted to betray you but couldn't find you.",
+    },
+    {
+      event: ev({
+        type: "AllianceFormed",
+        memberIds: ["t2", "t4"],
+        allianceId: "a1",
+        location: "centre",
+      }) as AllianceFormed,
+      expected: "Mara (t2) formed an alliance with Kathryn (t4).",
+    },
+    {
+      event: ev({
+        type: "AllianceProposalFailed",
+        proposerId: "t2",
+        targetId: "t1",
+        proposalId: "p1",
+        reason: "withdrawn",
+        location: "centre",
+      }) as AllianceProposalFailed,
+      expected:
+        "the alliance offer from Mara (t2) to you failed: Mara (t2) withdrew the offer by attacking.",
+    },
+    {
+      event: ev({
+        type: "AllianceProposalFailed",
+        proposerId: "t2",
+        targetId: "t4",
+        proposalId: "p1",
+        reason: "targetAllied",
+        location: "centre",
+      }) as AllianceProposalFailed,
+      expected:
+        "the alliance offer from Mara (t2) to Kathryn (t4) failed: Kathryn (t4) already had an ally.",
+    },
+    {
+      event: ev({
+        type: "AllianceProposalFailed",
+        proposerId: "t2",
+        targetId: "t4",
+        proposalId: "p1",
+        reason: "proposerAllied",
+        location: "centre",
+      }) as AllianceProposalFailed,
+      expected:
+        "the alliance offer from Mara (t2) to Kathryn (t4) failed: Mara (t2) already had an ally.",
+    },
+    {
+      event: ev({
+        type: "AllianceProposalFailed",
+        proposerId: "t2",
+        targetId: "t4",
+        proposalId: "p1",
+        reason: "proposerGone",
+        location: "centre",
+      }) as AllianceProposalFailed,
+      expected:
+        "the alliance offer from Mara (t2) to Kathryn (t4) failed: Kathryn (t4) couldn't find Mara (t2).",
+    },
+    {
+      event: ev({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t4",
+        proposalId: "p1",
+        reason: "proposerGone",
+        location: "centre",
+      }) as AllianceProposalFailed,
+      expected:
+        "the alliance offer from you to Kathryn (t4) failed: Kathryn (t4) couldn't find you.",
+    },
+    {
+      event: ev({
+        type: "AllianceProposalFailed",
+        proposerId: "t2",
+        targetId: "t4",
+        proposalId: "p1",
+        reason: "targetGone",
+        location: "centre",
+      }) as AllianceProposalFailed,
+      expected:
+        "the alliance offer from Mara (t2) to Kathryn (t4) failed: Mara (t2) couldn't find Kathryn (t4).",
+    },
+    {
+      event: ev({
+        type: "AllianceProposalFailed",
+        proposerId: "t2",
+        targetId: "t1",
+        proposalId: "p1",
+        reason: "targetGone",
+        location: "centre",
+      }) as AllianceProposalFailed,
+      expected:
+        "the alliance offer from Mara (t2) to you failed: Mara (t2) couldn't find you.",
+    },
+    {
+      event: ev({
+        type: "AllianceProposalFailed",
+        proposerId: "t2",
+        targetId: "t4",
+        proposalId: "p1",
+        reason: "ignored",
+        location: "centre",
+      }) as AllianceProposalFailed,
+      expected:
+        "the alliance offer from Mara (t2) to Kathryn (t4) failed: Kathryn (t4) ignored the offer.",
+    },
+    {
+      event: ev({
+        type: "AllianceProposed",
+        proposerId: "t1",
+        targetId: "t2",
+        proposalId: "p1",
+        location: "centre",
+      }) as AllianceProposed,
+      expected: "you proposed an alliance to Mara (t2).",
+    },
   ])("$event.type → $expected", ({ event, expected }) => {
     expect(describeEvent(event, "t1", names)).toBe(expected);
   });
@@ -709,11 +855,13 @@ describe("prompt", () => {
           tributeId: "t2",
           name: "Mara",
           hidLastRound: true,
+          allyId: null,
         },
         {
           tributeId: "t4",
           name: "Kathryn",
           hidLastRound: false,
+          allyId: null,
         },
       ],
     });
@@ -734,11 +882,13 @@ describe("prompt", () => {
           tributeId: "t2",
           name: "Mara",
           hidLastRound: true,
+          allyId: null,
         },
         {
           tributeId: "t4",
           name: "Kathryn",
           hidLastRound: false,
+          allyId: null,
         },
       ],
     });

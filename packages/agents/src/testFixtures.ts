@@ -37,11 +37,12 @@ export function makePerception(
           ammunition: null,
         },
       ],
+      allyId: null
     },
     zone: { zoneId: "forest", food: 3, water: 1, cover: 2 },
     adjacentZoneIds: ["centre", "ridge"],
     visibleTributes: [
-      { tributeId: "t2", name: "Tribute Two", hidLastRound: false },
+      { tributeId: "t2", name: "Tribute Two", hidLastRound: false, allyId: null },
     ],
     ...overrides,
   };

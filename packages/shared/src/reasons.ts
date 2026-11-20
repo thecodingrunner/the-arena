@@ -8,4 +8,4 @@ export const MODEL_FAILURE_REASONS = [
   "connection",
 ] as const;
 
-export const GAME_GATE_REASONS = ["illegalHunt", "illegalMove"] as const;
+export const GAME_GATE_REASONS = ["illegalHunt", "illegalMove", "illegalProposal", "illegalBetray", "illegalAccept"] as const;

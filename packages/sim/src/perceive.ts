@@ -22,10 +22,9 @@ export function perceive(state: GameState, tributeId: TributeId): Perception {
 
   const tributesInSameZone = state.tributes.filter(
     (t) =>
-      canSee(
-        tribute,
-        t.position,
-      ) && t.tributeId !== tribute.tributeId && t.alive,
+      canSee(tribute, t.position) &&
+      t.tributeId !== tribute.tributeId &&
+      t.alive,
   );
 
   const visibleTributes = tributesInSameZone.map((t) => {
@@ -33,6 +32,7 @@ export function perceive(state: GameState, tributeId: TributeId): Perception {
       tributeId: t.tributeId,
       name: t.name,
       hidLastRound: t.hiding,
+      allyId: t.allyId,
     };
   });
 
@@ -49,6 +49,7 @@ export function perceive(state: GameState, tributeId: TributeId): Perception {
       stats: { ...tribute.stats },
       position: tribute.position,
       inventory: tribute.inventory.map((i) => ({ ...i })),
+      allyId: tribute.allyId,
     },
     zone: {
       zoneId: zone.zoneId,

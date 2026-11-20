@@ -79,6 +79,7 @@ export function createMatch({
       hiding: false,
       kills: 0,
       diedInRound: null,
+      allyId: null,
     };
 
     nextItemId++;
@@ -97,5 +98,6 @@ export function createMatch({
     nextItemId: nextItemId,
     arenaId: arenaId,
     result: null,
+    pendingProposals: [],
   };
 }

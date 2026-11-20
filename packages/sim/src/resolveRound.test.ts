@@ -4,10 +4,13 @@ import {
   filterEvents,
   findEvent,
   makeConfig,
+  markDead,
   zoneOf,
+  giveInitiative,
+  placeAll,
 } from "./testFixtures";
 import { createMatch } from "./createMatch";
-import { damage, hitChance, resolveRound } from "./resolveRound";
+import { damage, hitChance, proposalIdFor, resolveRound } from "./resolveRound";
 import {
   weaponDefinitions,
   type GameState,
@@ -2446,4 +2449,770 @@ describe("resolveRound", () => {
 
     expect(tributeDiedEvents).toBeGreaterThan(0);
   });
+
+  // Alliances
+
+  test("the proposer dies before the accept -> proposerGone", () => {
+    const actions: RoundActions = {
+      t2: { type: "accept_alliance", proposerId: "t1" },
+      t3: { type: "hide" },
+    };
+
+    const before = createMatch(makeConfig());
+    placeAll(before, "centre");
+
+    before.pendingProposals = [
+      {
+        proposalId: "p1",
+        proposerId: "t1",
+        targetId: "t2",
+        round: before.round,
+      },
+    ];
+
+    markDead(before, 0, before.round);
+
+    const { events } = resolveRound(before, actions);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        reason: "proposerGone",
+      }),
+    );
+    expect(events).not.toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+      }),
+    );
+  });
+
+  test("the target moves away in round N (t2 moves first, then t1 proposes) -> targetGone in round N", () => {
+    const actions1: RoundActions = {
+      t1: { type: "propose_alliance", tributeId: "t2" },
+      t2: { type: "move_to", zoneId: "forest" },
+      t3: { type: "hide" },
+    };
+
+    const before = createMatch(makeConfig());
+    placeAll(before, "centre");
+    giveInitiative(before, 1, 0);
+
+    const { state: after, events } = resolveRound(before, actions1);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        reason: "targetGone",
+      }),
+    );
+    expect(events).not.toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposed",
+        proposerId: "t1",
+        targetId: "t2",
+      }),
+    );
+  });
+
+  test("the target moves away in round N (t1 proposes first, then t2 moves) -> proposerGone in round N+1", () => {
+    const actions1: RoundActions = {
+      t1: { type: "propose_alliance", tributeId: "t2" },
+      t2: { type: "move_to", zoneId: "forest" },
+      t3: { type: "hide" },
+    };
+    const actions2: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "accept_alliance", proposerId: "t1" },
+      t3: { type: "hide" },
+    };
+
+    const before = createMatch(makeConfig());
+    placeAll(before, "centre");
+    giveInitiative(before, 0, 1);
+
+    const { state: after1 } = resolveRound(before, actions1);
+    const { state: after2, events: events2 } = resolveRound(after1, actions2);
+
+    expect(events2).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        reason: "proposerGone",
+      }),
+    );
+    expect(after2.pendingProposals).toEqual([]);
+  });
+
+  test("two offers, accept one -> the other fails", () => {
+    const actions: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "accept_alliance", proposerId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    placeAll(before, "centre");
+
+    before.pendingProposals = [
+      {
+        proposalId: "p1",
+        proposerId: "t1",
+        targetId: "t2",
+        round: before.round,
+      },
+      {
+        proposalId: "p2",
+        proposerId: "t3",
+        targetId: "t2",
+        round: before.round,
+      },
+    ];
+
+    const { state: after, events } = resolveRound(before, actions);
+
+    expect(after.pendingProposals.length).toBe(0);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+        memberIds: ["t1", "t2"],
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t3",
+        targetId: "t2",
+        reason: "ignored",
+      }),
+    );
+  });
+
+  test("the target gets an ally earlier in the same round -> targetAllied", () => {
+    const actions: RoundActions = {
+      t1: { type: "propose_alliance", tributeId: "t2" },
+      t2: { type: "accept_alliance", proposerId: "t3" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.pendingProposals = [
+      {
+        proposalId: "p1",
+        proposerId: "t3",
+        targetId: "t2",
+        round: before.round,
+      },
+    ];
+    placeAll(before, "centre");
+
+    giveInitiative(before, 1, 0);
+
+    const { state: after, events } = resolveRound(before, actions);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+        memberIds: ["t3", "t2"],
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        reason: "targetAllied",
+      }),
+    );
+  });
+
+  test("a betrayal still has to find an ally who is hiding", () => {
+    const actions: RoundActions = {
+      t1: { type: "hide" },
+      t2: { type: "betray", allyId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    let notFoundEvents = 0;
+
+    for (let seed = 0; seed < 100; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.alliances = [
+        {
+          allianceId: "a-1",
+          memberIds: ["t1", "t2"],
+        },
+      ];
+      placeAll(before, "centre");
+
+      giveInitiative(before, 0, 1);
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      const notFound = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.outcome === "notFound",
+      );
+
+      if (notFound) notFoundEvents++;
+    }
+
+    expect(notFoundEvents).toBeGreaterThan(0);
+  });
+
+  test("the alliance is removed after a betrayal", () => {
+    const actions: RoundActions = {
+      t1: { type: "betray", allyId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+
+    before.alliances = [
+      {
+        allianceId: "a-1",
+        memberIds: ["t1", "t2"],
+      },
+    ];
+    placeAll(before, "centre");
+
+    const { state: after, events } = resolveRound(before, actions);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a-1",
+      }),
+    );
+    expect(after.alliances.length).toBe(0);
+  });
+
+  test("the alliance is removed after a death", () => {
+    const actions: RoundActions = {
+      t1: { type: "hide" },
+      t2: { type: "hide" },
+      t3: { type: "hide" },
+    };
+
+    const before = createMatch(makeConfig());
+
+    before.alliances = [
+      {
+        allianceId: "a-1",
+        memberIds: ["t1", "t2"],
+      },
+    ];
+
+    const { tributes } = before;
+
+    placeAll(before, "centre");
+    tributes[0]!.hp = 2;
+    tributes[0]!.hunger = 100;
+
+    const { state: after, events } = resolveRound(before, actions);
+
+    expect(after.alliances.length).toBe(0);
+  });
+
+  test("a betrayal will emit the events of AllianceBetrayed, TributeAttacked, TributeHealthChanged (and maybe TributeDied)", () => {
+    const actions: RoundActions = {
+      t1: { type: "betray", allyId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    for (let seed = 0; seed < 100; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+
+      before.alliances = [
+        {
+          allianceId: "a-1",
+          memberIds: ["t1", "t2"],
+        },
+      ];
+      placeAll(before, "centre");
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: "AllianceBetrayed",
+          betrayerId: "t1",
+          victimId: "t2",
+          allianceId: "a-1",
+        }),
+      );
+      const attackEvent = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1" && e.victimId === "t2",
+      );
+      expect(attackEvent).toBeDefined();
+      if (attackEvent!.outcome === "hit") {
+        const healthChanged = findEvent(
+          events,
+          "TributeHealthChanged",
+          (e) => e.tributeId === "t2" && e.delta < 0,
+        );
+        expect(healthChanged).toBeDefined();
+      }
+    }
+  });
+
+  test("proposing uses round N's action, accepting uses round N+1's", () => {
+    const actions1: RoundActions = {
+      t1: { type: "propose_alliance", tributeId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    placeAll(before, "centre");
+
+    const { state: after1, events: events1 } = resolveRound(before, actions1);
+
+    expect(after1.pendingProposals.length).toBe(1);
+    expect(after1.alliances.length).toBe(0);
+    expect(events1).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposed",
+        proposerId: "t1",
+        targetId: "t2",
+      }),
+    );
+    expect(events1).not.toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+      }),
+    );
+
+    const actions2: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "accept_alliance", proposerId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    const { state: after2, events: events2 } = resolveRound(after1, actions2);
+
+    expect(after2.pendingProposals.length).toBe(0);
+    expect(after2.alliances.length).toBe(1);
+    expect(events2).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+      }),
+    );
+  });
+
+  test("proposal ignored for 1 round -> ignored", () => {
+    const before = createMatch(makeConfig());
+    placeAll(before, "centre");
+
+    before.pendingProposals = [
+      {
+        proposalId: "p1",
+        proposerId: "t1",
+        targetId: "t2",
+        round: before.round,
+      },
+    ];
+
+    const actions: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const { state: after, events } = resolveRound(before, actions);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        reason: "ignored",
+      }),
+    );
+    expect(after.pendingProposals.length).toBe(0);
+  });
+
+  test("with mutual proposals, an alliance is formed immediately in round N", () => {
+    const actions: RoundActions = {
+      t1: { type: "propose_alliance", tributeId: "t2" },
+      t2: { type: "propose_alliance", tributeId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.alliances = [];
+    placeAll(before, "centre");
+
+    const { state: after, events } = resolveRound(before, actions);
+
+    expect(after.alliances.length).toBe(1);
+    expect(after.pendingProposals.length).toBe(0);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+      }),
+    );
+  });
+
+  test("tribute hunts their target -> withdrawn (works regardless of order), attack still happens", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "accept_alliance", proposerId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    placeAll(before, "centre");
+    giveInitiative(before, 1, 0);
+
+    before.pendingProposals = [
+      {
+        proposalId: "p1",
+        proposerId: "t1",
+        targetId: "t2",
+        round: before.round,
+      },
+    ];
+    before.alliances = [];
+
+    const { state: after, events } = resolveRound(before, actions);
+
+    expect(after.pendingProposals.length).toBe(0);
+    expect(after.alliances.length).toBe(0);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        reason: "withdrawn",
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "TributeAttacked",
+        attackerId: "t1",
+        victimId: "t2",
+      }),
+    );
+  });
+
+  test("if a betrayal attack with higher initiative hits, the victim cannot fight back, and will be pinned down (second one doesn't emit AllianceBetrayed)", () => {
+    const actions: RoundActions = {
+      t1: { type: "betray", allyId: "t2" },
+      t2: { type: "betray", allyId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    for (let seed = 0; seed < 100; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+
+      before.alliances = [
+        {
+          allianceId: "a1",
+          memberIds: ["t1", "t2"],
+        },
+      ];
+      placeAll(before, "centre");
+      giveInitiative(before, 0, 1);
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: "AllianceBetrayed",
+          betrayerId: "t1",
+          victimId: "t2",
+        }),
+      );
+      const attackEvent = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+      expect(attackEvent).toBeDefined();
+      if (attackEvent?.outcome === "hit") {
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            type: "TributeAttacked",
+            attackerId: "t2",
+            victimId: "t1",
+            outcome: "pinnedDown",
+          }),
+        );
+      }
+      expect(events).not.toContainEqual(
+        expect.objectContaining({
+          type: "AllianceBetrayed",
+          betrayerId: "t2",
+          victimId: "t1",
+        }),
+      );
+      expect(after.alliances.length).toBe(0);
+    }
+  });
+
+  test("if a betrayal attack with higher initiative misses, the victim can fight back (second one doesn't emit AllianceBetrayed)", () => {
+    const actions: RoundActions = {
+      t1: { type: "betray", allyId: "t2" },
+      t2: { type: "betray", allyId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    for (let seed = 0; seed < 100; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+
+      before.alliances = [
+        {
+          allianceId: "a1",
+          memberIds: ["t1", "t2"],
+        },
+      ];
+      placeAll(before, "centre");
+      giveInitiative(before, 0, 1);
+
+      const { state: after, events } = resolveRound(before, actions);
+
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: "AllianceBetrayed",
+          betrayerId: "t1",
+          victimId: "t2",
+        }),
+      );
+      const attackEvent = findEvent(
+        events,
+        "TributeAttacked",
+        (e) => e.attackerId === "t1",
+      );
+      expect(attackEvent).toBeDefined();
+      if (attackEvent?.outcome === "missed") {
+        expect(
+          findEvent(
+            events,
+            "TributeAttacked",
+            (e) =>
+              e.attackerId === "t2" &&
+              e.victimId === "t1" &&
+              e.outcome !== "pinnedDown",
+          ),
+        ).toBeDefined();
+      }
+      expect(events).not.toContainEqual(
+        expect.objectContaining({
+          type: "AllianceBetrayed",
+          betrayerId: "t2",
+          victimId: "t1",
+        }),
+      );
+      expect(after.alliances.length).toBe(0);
+    }
+  });
+
+  test("ally moved away before the betrayal resolves -> targetGone", () => {
+    const actions: RoundActions = {
+      t1: { type: "move_to", zoneId: "forest" },
+      t2: { type: "betray", allyId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+
+    before.alliances = [
+      {
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+      },
+    ];
+    placeAll(before, "centre");
+
+    giveInitiative(before, 0, 1);
+
+    const { state: after, events } = resolveRound(before, actions);
+
+    expect(after.alliances).toEqual([
+      {
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+      },
+    ]);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceBetrayed",
+        outcome: "targetGone",
+        betrayerId: "t2",
+      }),
+    );
+    expect(events).not.toContainEqual(
+      expect.objectContaining({
+        type: "TributeAttacked",
+        attackerId: "t2",
+      }),
+    );
+  });
+
+  test("proposer got an ally in the meantime -> proposerAllied", () => {
+    const actions: RoundActions = {
+      t1: { type: "accept_alliance", proposerId: "t3" },
+      t2: { type: "accept_alliance", proposerId: "t1" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+
+    before.pendingProposals = [
+      {
+        proposalId: "p1",
+        proposerId: "t3",
+        targetId: "t1",
+        round: before.round,
+      },
+      {
+        proposalId: "p2",
+        proposerId: "t1",
+        targetId: "t2",
+        round: before.round,
+      },
+    ];
+    placeAll(before, "centre");
+
+    giveInitiative(before, 0, 1);
+
+    const { state: after, events } = resolveRound(before, actions);
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+        memberIds: ["t3", "t1"],
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        reason: "proposerAllied",
+      }),
+    );
+    expect(after.alliances.length).toBe(1);
+    expect(after.pendingProposals).toEqual([]);
+  });
+
+  test("an accept with no matching proposal -> throw", () => {
+    const actions: RoundActions = {
+      t1: { type: "accept_alliance", proposerId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.pendingProposals = [];
+
+    expect(() => resolveRound(before, actions)).toThrow(
+      "Tributes cannot accept an alliance without a proposal",
+    );
+  });
+
+  test("a hunt on an ally -> throw", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.alliances = [
+      {
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+      },
+    ];
+
+    expect(() => resolveRound(before, actions)).toThrow(
+      "Tributes cannot hunt an ally",
+    );
+  });
+
+  test("betray an alliance that doesnt exist -> throw", () => {
+    const actions: RoundActions = {
+      t1: { type: "betray", allyId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+    before.alliances = [];
+    placeAll(before, "centre");
+
+    expect(() => resolveRound(before, actions)).toThrow(
+      "A tribute cannot betray an alliance that doesn't exist",
+    );
+  });
+
+  test("after round N+1, every proposal from round N is gone from pendingProposals", () => {
+    const actions: RoundActions = {
+      t1: { type: "rest" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    const before = createMatch(makeConfig());
+
+    before.pendingProposals = [
+      {
+        proposalId: proposalIdFor(before.round, "t3", "t1"),
+        proposerId: "t3",
+        targetId: "t1",
+        round: before.round,
+      },
+      {
+        proposalId: proposalIdFor(before.round, "t1", "t2"),
+        proposerId: "t1",
+        targetId: "t2",
+        round: before.round,
+      },
+    ];
+
+    const { state: after } = resolveRound(before, actions);
+
+    expect(after.pendingProposals).toEqual([]);
+  });
+
+  test("alliances end on death from kills", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "rest" },
+      t3: { type: "rest" },
+    };
+
+    let kills = 0;
+    for (let seed = 0; seed < 50; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+      before.alliances = [{ allianceId: "a1", memberIds: ["t2", "t3"] }];
+      placeAll(before, "centre");
+      before.tributes[1]!.hp = 1;
+
+      const { state: after, events } = resolveRound(before, actions);
+      if (findEvent(events, "TributeDied", (e) => e.victimId === "t2")) {
+        kills++;
+        expect(after.alliances).toEqual([]);
+      }
+    }
+    expect(kills).toBeGreaterThan(0);
+  });
+
+  test.todo(
+    "if the betrayer was pinned down earlier that round -> AllianceBetrayed fails with 'pinnedDown'",
+  );
 });

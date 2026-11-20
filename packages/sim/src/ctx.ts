@@ -1,4 +1,4 @@
-import type { ArenaDefinition, GameEvent, GameState, Rng, Zone } from "@arena/shared";
+import type { Alliance, ArenaDefinition, GameEvent, GameState, Rng, Zone } from "@arena/shared";
 
 export type DistributiveOmit<T, K extends keyof T> = T extends unknown
   ? Omit<T, K>
@@ -16,4 +16,6 @@ export type Ctx = {
   emitEvent: (e: EventInput) => void;
   copiedGameState: GameState;
   pinned: Set<string>;
+  withdrawn: Set<string>;
+  alliancesAtStart: Alliance[];
 };

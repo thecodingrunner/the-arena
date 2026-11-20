@@ -5,6 +5,8 @@ import {
   sanitisePersonality,
   sponsorItemDefinitions,
   weaponDefinitions,
+  type AllianceBetrayed,
+  type AllianceProposalFailed,
   type Facts,
   type InventoryItem,
   type Memory,
@@ -18,7 +20,14 @@ import {
   type WitnessedEvent,
 } from "@arena/shared";
 import { MAX_TAG_LENGTH, MAX_TAGS_PER_TRIBUTE } from "./convertTagUpdates";
-import { HEALTH_PER_REST, HUNGER_HEALTH_COST, HUNGER_PER_MOVE_COST, HUNGER_TICK, HUNGER_VALUE, MAX_LINE_LENGTH } from "@arena/shared/src/rules";
+import {
+  HEALTH_PER_REST,
+  HUNGER_HEALTH_COST,
+  HUNGER_PER_MOVE_COST,
+  HUNGER_TICK,
+  HUNGER_VALUE,
+  MAX_LINE_LENGTH,
+} from "@arena/shared/src/rules";
 
 export function buildSystemPrompt(tribute: {
   name: string;
@@ -172,6 +181,40 @@ export function describeEvent(
     }
   }
 
+  function betrayOutcome(event: AllianceBetrayed) {
+    switch (event.outcome) {
+      case "success":
+        return "";
+      case "targetGone":
+        return ` but couldn't find ${label(event.victimId, names, selfId)}`;
+      default: {
+        const unhandled: never = event.outcome; // compile error if a case is missing
+        return unhandled;
+      }
+    }
+  }
+
+  function proposalFailedReason(event: AllianceProposalFailed) {
+    switch (event.reason) {
+      case "ignored":
+        return ` ${label(event.targetId, names, selfId)} ignored the offer.`;
+      case "withdrawn":
+        return ` ${label(event.proposerId, names, selfId)} withdrew the offer by attacking.`;
+      case "targetAllied":
+        return ` ${label(event.targetId, names, selfId)} already had an ally.`;
+      case "proposerGone":
+        return ` ${label(event.targetId, names, selfId)} couldn't find ${label(event.proposerId, names, selfId)}.`;
+      case "proposerAllied":
+        return ` ${label(event.proposerId, names, selfId)} already had an ally.`;
+      case "targetGone":
+        return ` ${label(event.proposerId, names, selfId)} couldn't find ${label(event.targetId, names, selfId)}.`;
+      default: {
+        const unhandled: never = event.reason; // compile error if a case is missing
+        return unhandled;
+      }
+    }
+  }
+
   switch (event.type) {
     case "TributeHid":
       return `${label(event.tributeId, names, selfId)} hid.`;
@@ -193,8 +236,15 @@ export function describeEvent(
       return `the ${event.zoneId} flooded.`;
     case "ZoneClosed":
       return `the ${event.zoneId} closed.`;
+    case "AllianceBetrayed":
+      return `${label(event.betrayerId, names, selfId)} ${event.outcome === "success" ? "betrayed" : "attempted to betray"} ${label(event.victimId, names, selfId)}${betrayOutcome(event)}.`;
+    case "AllianceFormed":
+      return `${label(event.memberIds[0], names, selfId)} formed an alliance with ${label(event.memberIds[1], names, selfId)}.`;
+    case "AllianceProposalFailed":
+      return `the alliance offer from ${label(event.proposerId, names, selfId)} to ${label(event.targetId, names, selfId)} failed:${proposalFailedReason(event)}`;
+    case "AllianceProposed":
+      return  `${label(event.proposerId, names, selfId)} proposed an alliance to ${label(event.targetId, names, selfId)}.`
     case "MatchEnded":
-    case "TributeBetrayedAlliance":
     case "ZoneWaterChanged":
     case "ZoneFoodChanged":
     case "SponsorGiftUndelivered":

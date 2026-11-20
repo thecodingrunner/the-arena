@@ -42,6 +42,7 @@ export type TributeState = {
   hiding: boolean;
   kills: number;
   diedInRound: number | null;
+  allyId: TributeId | null;
 };
 
 export type Tribute = TributeConfig & TributeState;
@@ -91,7 +92,14 @@ export type ArenaDefinition = {
 
 export type Alliance = {
   allianceId: string;
-  memberIds: TributeId[];
+  memberIds: [TributeId, TributeId];
+};
+
+export type PendingProposal = {
+  proposalId: string;
+  proposerId: TributeId;
+  targetId: TributeId;
+  round: number;
 };
 
 export type MatchConfig = {
@@ -112,6 +120,7 @@ export type GameState = {
   alliances: Alliance[]; // live here, not on Tribute: single source of truth
   zones: Zone[]; // per-match copy, since food and water change during play
   result: MatchResults | null;
+  pendingProposals: PendingProposal[];
 };
 
 // Intent: what a tribute tries to do. The engine decides what actually happens.
@@ -245,9 +254,38 @@ export type SponsorGiftUndelivered = EventBase & {
   reason: "recipientDead" | "noMatchingWeapon" | "noMatchingTribute";
 };
 
-export type TributeBetrayedAlliance = EventBase & {
-  type: "TributeBetrayedAlliance";
+export type AllianceBetrayed = EventBase & {
+  type: "AllianceBetrayed";
   betrayerId: TributeId;
+  victimId: TributeId;
+  allianceId: string;
+  outcome: "success" | "targetGone"
+};
+
+export type AllianceProposed = EventBase & {
+  type: "AllianceProposed";
+  proposerId: TributeId;
+  targetId: TributeId;
+  proposalId: string;
+};
+
+export type AllianceProposalFailed = EventBase & {
+  type: "AllianceProposalFailed";
+  proposerId: TributeId;
+  targetId: TributeId;
+  proposalId: string;
+  reason:
+    | "ignored"
+    | "withdrawn"
+    | "targetAllied"
+    | "proposerGone"
+    | "proposerAllied"
+    | "targetGone";
+};
+
+export type AllianceFormed = EventBase & {
+  type: "AllianceFormed";
+  memberIds: [TributeId, TributeId];
   allianceId: string;
 };
 
@@ -291,7 +329,10 @@ export type GameEvent =
   | TributeAttacked
   | TributeAmmunitionChanged
   | TributeGainedItem
-  | TributeBetrayedAlliance
+  | AllianceBetrayed
+  | AllianceProposed
+  | AllianceProposalFailed
+  | AllianceFormed
   | SponsorGiftDelivered
   | SponsorGiftUndelivered
   | ZoneFoodChanged
@@ -323,6 +364,7 @@ export type Perception = {
     stats: Stats;
     position: ZoneId;
     inventory: InventoryItem[];
+    allyId: TributeId | null;
   };
   zone: { zoneId: ZoneId; food: number; water: number; cover: number };
   adjacentZoneIds: ZoneId[]; // → valid move_to targets
@@ -330,6 +372,7 @@ export type Perception = {
     tributeId: TributeId;
     name: string;
     hidLastRound: boolean;
+    allyId: TributeId | null;
   }[]; // same zone, alive, hidLastRound → valid hunt targets
   // later (step 9): recent events this tribute witnessed, memory, relationship tags
 };
@@ -404,4 +447,8 @@ export type AgentDecision =
 
 export type ModelFailureReason = (typeof MODEL_FAILURE_REASONS)[number];
 
-export type Decide = (perception: Perception, memory: Memory, tags: Record<TributeId, Tags>) => Promise<AgentDecision>;
+export type Decide = (
+  perception: Perception,
+  memory: Memory,
+  tags: Record<TributeId, Tags>,
+) => Promise<AgentDecision>;

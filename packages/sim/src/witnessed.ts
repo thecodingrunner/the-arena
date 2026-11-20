@@ -19,7 +19,7 @@ const publicEvents: GameEvent["type"][] = [
   "TributeForaged",
   "TributeRested",
   "TributeGainedItem",
-  "TributeBetrayedAlliance",
+  "AllianceBetrayed",
   "TributeChangedZone",
   "ZoneWaterChanged",
   "ZoneFoodChanged",
@@ -94,9 +94,13 @@ function isOwn(e: GameEvent, tributeId: TributeId): boolean {
     case "SponsorGiftUndelivered":
     case "SponsorGiftDelivered":
       return e.to === tributeId;
-    case "TributeBetrayedAlliance":
-      // TODO: currently only includes the betrayer, will need to add the alliance members in stage 10
-      return e.betrayerId === tributeId;
+    case "AllianceBetrayed":
+      return e.betrayerId === tributeId || e.victimId === tributeId;
+    case "AllianceProposed":
+    case "AllianceProposalFailed":
+      return e.proposerId === tributeId || e.targetId === tributeId;
+    case "AllianceFormed":
+      return e.memberIds.includes(tributeId);
     case "ZoneWaterChanged":
     case "ZoneFoodChanged":
     case "MatchEnded":
@@ -116,7 +120,8 @@ function isRanged(weaponDefinitionId: string | null): boolean {
   );
 
   if (weaponDefinitionId === null) return false;
-  if (weapon === undefined) throw new Error(`unknown weaponDefinitionId ${weaponDefinitionId}`);
+  if (weapon === undefined)
+    throw new Error(`unknown weaponDefinitionId ${weaponDefinitionId}`);
 
   return weapon.ranged;
 }

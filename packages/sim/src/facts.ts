@@ -71,8 +71,8 @@ export function buildFacts(
         entry(e.to, e);
         break;
       }
-      case "TributeBetrayedAlliance": {
-        entry(e.betrayerId, e);
+      case "AllianceBetrayed": {
+        entry(e.betrayerId, e); // TODO: add
         break;
       }
       case "TributeHid":
@@ -93,6 +93,9 @@ export function buildFacts(
         }
         break;
       }
+      case "AllianceFormed": // TODO: add
+      case "AllianceProposed":
+      case "AllianceProposalFailed":
       case "ZoneWaterChanged":
       case "ZoneFoodChanged":
       case "MatchEnded":

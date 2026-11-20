@@ -8,7 +8,7 @@ Check this against the log at the end of each week. The **hours** column is the 
 
 | Part | Est. hours | Running total by end | Aim to finish by | Actual date | Actual total |
 | ---- | ---------- | -------------------- | ---------------- | ----------- | ------------ |
-| P1 step 9: LLM loop | 14 | ~104 | Mon 17 Nov | | |
+| P1 step 9: LLM loop | 14 | ~104 | Mon 17 Nov | Tue 18 Nov | 125.5 |
 | P1 step 10: alliances | 10 | ~114 | Thu 20 Nov | | |
 | P1 step 11: arena events and hazards | 9 | ~123 | Sun 23 Nov | | |
 | P1 step 12: four arenas as rules data | 4 | ~127 | Mon 24 Nov | | |
@@ -47,7 +47,12 @@ Check this against the log at the end of each week. The **hours** column is the 
 | 2026-11-11 |   8   | 3.4         | match end and match loop                          |       |
 | 2026-11-12 |   7   | 3.7         | fallback                                          |       |
 | 2026-11-13 |   7   | 3.5         | visibility and witnessed                          |       |
-| 2026-11-14 |   3   | 0.9         | long-term memory facts                            |       |
-| 2026-11-16 |   8.5 | 2.4         | long-term memory facts                            |       |
+| 2026-11-14 |   3   | 0.9         | Long-term memory facts (buildFacts)               |       |
+| 2026-11-16 |   8.5 | 2.4         | Step 9: remember(), system prompt, user message   |       |
+| 2026-11-17 |   1   | 1.0         | Step 9: Claude call design (structured outputs, CallModel, ModelResult) | |
+| 2026-11-18 |   9   | 3.9         | Step 9: decide with gates, Claude adapter, smoke test, parallel runMatch (step 9 code done) | |
+| 2026-11-19 |   4   | 1.4         | Step 9: remember(), system prompt, user message   |       |
 
-**Running total:** 118.5 / 250 hours (to 2026-11-13)
+**Running total:** 125.5 / 250 hours (to 2026-11-18)
+**With Claude total:** 56.9 hours
+**Ratio (with Claude / total):** 45%

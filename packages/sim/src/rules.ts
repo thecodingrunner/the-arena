@@ -14,3 +14,5 @@ export const MIN_HIT_CHANCE = 0.1;
 export const MAX_HIT_CHANCE = 0.8;
 export const MIN_DAMAGE = 1;
 export const MAX_ROUNDS = 100;
+export const SURPRISE_HIT_BONUS = 0.2;
+export const CHARISMA_BETRAYAL_FORESIGHT = 0.02;

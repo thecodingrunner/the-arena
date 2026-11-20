@@ -9,8 +9,10 @@ import {
   MAX_HUNGER,
   weaponDefinitions,
   type Action,
+  type AllianceProposalFailed,
   type GameEvent,
   type GameState,
+  type PendingProposal,
   type Rng,
   type SponsorGift,
   type Tribute,
@@ -18,11 +20,13 @@ import {
   type TributeId,
   type WeaponDefinition,
   type WeaponInstance,
+  type ZoneId,
 } from "@arena/shared";
 import { createRng } from "./rng";
 import {
   AGILITY_DODGE_BONUS,
   BASE_HIT_RATE,
+  CHARISMA_BETRAYAL_FORESIGHT,
   ENDURANCE_TOUGHNESS_BONUS,
   FORAGE_BASE_CHANCE,
   FORAGE_MAX_CHANCE,
@@ -34,6 +38,7 @@ import {
   MIN_DAMAGE,
   MIN_HIT_CHANCE,
   SPOTTING_DIE,
+  SURPRISE_HIT_BONUS,
   WEAPON_DAMAGE_BONUS,
   WEAPON_HIT_RATE_BONUS,
 } from "./rules";
@@ -78,6 +83,7 @@ export function resolveRound(
   const edges = arena.edges;
 
   const pinned = new Set<TributeId>();
+  const withdrawn = new Set<TributeId>();
 
   function emitEvent(event: EventInput) {
     events.push({
@@ -98,16 +104,25 @@ export function resolveRound(
     emitEvent,
     copiedGameState,
     pinned,
+    withdrawn,
+    alliancesAtStart: [...state.alliances],
   };
 
   const roundSponsorGifts = sponsorGifts?.filter(
     (g) => g.appliesInRound === copiedGameState.round,
-  )
+  );
   if (roundSponsorGifts) {
     resolveGifts(ctx, roundSponsorGifts);
   }
 
   const orderedTributes = setInitiativeOrder(tributes, rng);
+
+  for (const proposal of copiedGameState.pendingProposals) {
+    const action = actions[proposal.proposerId];
+    if (action?.type === "hunt" && action.targetId === proposal.targetId) {
+      withdrawn.add(proposal.proposalId);
+    }
+  }
 
   for (const tribute of orderedTributes) {
     if (tribute.alive === false) continue;
@@ -132,9 +147,14 @@ export function resolveRound(
       case "hide":
         resolveHide(ctx, tribute);
         break;
-      case "betray":
-      case "propose_alliance":
       case "accept_alliance":
+        resolveAcceptAlliance(ctx, tribute, action.proposerId);
+        break;
+      case "propose_alliance":
+        resolveProposeAlliance(ctx, tribute, action.tributeId);
+        break;
+      case "betray":
+        resolveBetray(ctx, tribute, action.allyId);
         break;
       default: {
         const unreachable: never = action; // compile error if a new Action type is added without a case
@@ -194,6 +214,30 @@ export function resolveRound(
     (acc, t) => ({ ...acc, [t.tributeId]: t.hp }),
     {} as Record<TributeId, number>,
   );
+
+  // Remove ignored proposals
+
+  for (const proposal of copiedGameState.pendingProposals) {
+    if (proposal.round < copiedGameState.round) {
+      failProposal(
+        ctx,
+        proposal,
+        "ignored",
+        tributes.find((t) => t.tributeId === proposal.targetId)!.position,
+      );
+    }
+  }
+  copiedGameState.pendingProposals = copiedGameState.pendingProposals.filter(
+    (p) => p.round === copiedGameState.round,
+  );
+
+  for (const tribute of tributes) {
+    if (tribute.alive === false) {
+      copiedGameState.alliances = copiedGameState.alliances.filter(
+        (a) => !a.memberIds.includes(tribute.tributeId),
+      );
+    }
+  }
 
   const matchEnd = checkMatchEnd(copiedGameState.round, startHp, tributes, rng);
 
@@ -382,7 +426,17 @@ function resolveMoveTo(ctx: Ctx, tribute: Tribute, targetZoneId: string) {
 }
 
 function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
-  const { emitEvent, copiedGameState, rng, pinned } = ctx;
+  const { emitEvent, copiedGameState, rng, pinned, withdrawn } = ctx;
+
+  if (
+    copiedGameState.alliances.some(
+      (a) =>
+        a.memberIds.includes(tribute.tributeId) &&
+        a.memberIds.includes(targetTributeId),
+    )
+  ) {
+    throw new Error("Tributes cannot hunt an ally");
+  }
 
   function emitAttack(
     outcome: TributeAttacked["outcome"],
@@ -412,9 +466,12 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
     throw new Error("a tribute can't hunt themself");
   }
 
-  if (pinned.has(tribute.tributeId)) {
-    emitAttack("pinnedDown", null);
-    return;
+  if (
+    copiedGameState.pendingProposals.some(
+      (p) => p.proposerId === tribute.tributeId,
+    )
+  ) {
+    withdrawn.add(tribute.tributeId);
   }
 
   if (
@@ -425,87 +482,7 @@ function resolveHunt(ctx: Ctx, tribute: Tribute, targetTributeId: string) {
     return;
   }
 
-  if (targetTribute.hiding === true) {
-    const spotted =
-      targetTribute.stats.stealth * HIDING_BONUS + rng.int(1, SPOTTING_DIE) <=
-      tribute.stats.intelligence + rng.int(1, SPOTTING_DIE);
-
-    if (!spotted) {
-      emitAttack("notFound", null);
-      return;
-    }
-  }
-
-  const { instance: weaponInstance, definition: weaponDefinition } =
-    chooseWeapon(tribute);
-
-  const hit = rng.chance(hitChance(tribute, targetTribute, weaponDefinition));
-
-  emitAttack(hit ? "hit" : "missed", weaponDefinition.weaponDefinitionId);
-
-  if (weaponInstance && weaponInstance.ammunition !== null) {
-    weaponInstance.ammunition--;
-
-    emitEvent({
-      type: "TributeAmmunitionChanged",
-      tributeId: tribute.tributeId,
-      itemId: weaponInstance.itemId,
-      delta: -1,
-      ammunition: weaponInstance.ammunition,
-      location: tribute.position,
-    });
-  }
-
-  if (hit) {
-    const damageDone = damage(tribute, targetTribute, weaponDefinition);
-
-    const newHealth = Math.max(0, targetTribute.hp - damageDone);
-    const delta = newHealth - targetTribute.hp;
-    targetTribute.hp = newHealth;
-
-    emitEvent({
-      type: "TributeHealthChanged",
-      tributeId: targetTributeId,
-      delta: delta,
-      hp: newHealth,
-      location: targetTribute.position,
-    });
-
-    if (targetTribute.hp === 0) {
-      targetTribute.alive = false;
-      targetTribute.diedInRound = ctx.copiedGameState.round;
-      tribute.kills++;
-
-      emitEvent({
-        type: "TributeDied",
-        victimId: targetTributeId,
-        cause: {
-          kind: "attack",
-          killerId: tribute.tributeId,
-        },
-        location: targetTribute.position,
-      });
-
-      const victimWeapons = targetTribute.inventory.filter(
-        (i) => i.kind === "weapon",
-      );
-
-      tribute.inventory = [...tribute.inventory, ...victimWeapons];
-      targetTribute.inventory = [];
-
-      for (const weapon of victimWeapons) {
-        emitEvent({
-          type: "TributeGainedItem",
-          tributeId: tribute.tributeId,
-          item: weapon,
-          location: tribute.position,
-        });
-      }
-    }
-    if (weaponDefinition.ranged) {
-      pinned.add(targetTributeId);
-    }
-  }
+  resolveAttack(ctx, tribute, targetTribute, {});
 }
 
 function resolveHide(ctx: Ctx, tribute: Tribute) {
@@ -514,6 +491,241 @@ function resolveHide(ctx: Ctx, tribute: Tribute) {
   emitEvent({
     type: "TributeHid",
     tributeId: tribute.tributeId,
+    location: tribute.position,
+  });
+}
+
+function resolveAcceptAlliance(
+  ctx: Ctx,
+  tribute: Tribute,
+  proposerTributeId: TributeId,
+) {
+  const { copiedGameState, emitEvent, withdrawn } = ctx;
+
+  const proposal = copiedGameState.pendingProposals.find(
+    (p) =>
+      p.proposerId === proposerTributeId && p.targetId === tribute.tributeId,
+  );
+
+  if (proposal === undefined) {
+    throw new Error("Tributes cannot accept an alliance without a proposal");
+  }
+
+  if (withdrawn.has(proposal.proposalId)) {
+    failProposal(ctx, proposal, "withdrawn", tribute.position);
+    return;
+  }
+
+  const proposerTribute = copiedGameState.tributes.find(
+    (t) => t.tributeId === proposerTributeId,
+  );
+
+  if (proposerTribute === undefined) {
+    throw new Error(
+      `proposerTribute ${proposerTributeId} does not exist, so tribute ${tribute.tributeId} cannot accept an alliance`,
+    );
+  }
+
+  if (proposerTribute.alive === false) {
+    failProposal(ctx, proposal, "proposerGone", tribute.position);
+    return;
+  }
+
+  if (proposerTribute.position !== tribute.position) {
+    failProposal(ctx, proposal, "proposerGone", tribute.position);
+    copiedGameState.pendingProposals = copiedGameState.pendingProposals.filter(
+      (p) => p.proposalId !== proposal.proposalId,
+    );
+    return;
+  }
+
+  if (
+    copiedGameState.alliances.some((a) =>
+      a.memberIds.includes(proposerTributeId),
+    )
+  ) {
+    failProposal(ctx, proposal, "proposerAllied", tribute.position);
+    copiedGameState.pendingProposals = copiedGameState.pendingProposals.filter(
+      (p) => p.proposalId !== proposal.proposalId,
+    );
+    return;
+  }
+
+  const allianceId = allianceIdFor(
+    copiedGameState.round,
+    proposerTributeId,
+    tribute.tributeId,
+  );
+
+  emitEvent({
+    type: "AllianceFormed",
+    allianceId: allianceId,
+    memberIds: [proposerTributeId, tribute.tributeId],
+    location: tribute.position,
+  });
+  copiedGameState.alliances.push({
+    allianceId: allianceId,
+    memberIds: [proposerTributeId, tribute.tributeId],
+  });
+  copiedGameState.pendingProposals = copiedGameState.pendingProposals.filter(
+    (p) => p.proposalId !== proposal.proposalId,
+  );
+}
+
+function resolveBetray(ctx: Ctx, tribute: Tribute, allyTributeId: TributeId) {
+  const { copiedGameState, emitEvent, alliancesAtStart } = ctx;
+
+  const allyTribute = copiedGameState.tributes.find(
+    (t) => t.tributeId === allyTributeId,
+  );
+
+  if (allyTribute === undefined) {
+    throw new Error(
+      `allyTribute ${allyTributeId} does not exist, so tribute ${tribute.tributeId} cannot betray`,
+    );
+  }
+
+  const alliance = copiedGameState.alliances.find(
+    (a) =>
+      a.memberIds.includes(tribute.tributeId) &&
+      a.memberIds.includes(allyTributeId),
+  );
+
+  if (alliance) {
+    if (allyTribute.position !== tribute.position) {
+      emitEvent({
+        type: "AllianceBetrayed",
+        betrayerId: tribute.tributeId,
+        victimId: allyTributeId,
+        allianceId: alliance.allianceId,
+        outcome: "targetGone",
+        location: tribute.position,
+      });
+      return;
+    }
+
+    emitEvent({
+      type: "AllianceBetrayed",
+      betrayerId: tribute.tributeId,
+      victimId: allyTributeId,
+      allianceId: alliance.allianceId,
+      outcome: "success",
+      location: tribute.position,
+    });
+
+    copiedGameState.alliances = copiedGameState.alliances.filter(
+      (a) => a.allianceId !== alliance.allianceId,
+    );
+
+    resolveAttack(ctx, tribute, allyTribute, {
+      hitBonus: surpriseBonus(allyTribute.stats.charisma),
+      pinOnHit: true,
+    });
+  } else if (
+    alliancesAtStart.some(
+      (a) =>
+        a.memberIds.includes(tribute.tributeId) &&
+        a.memberIds.includes(allyTributeId),
+    )
+  ) {
+    resolveAttack(ctx, tribute, allyTribute, {
+      hitBonus: surpriseBonus(allyTribute.stats.charisma),
+      pinOnHit: true,
+    });
+  } else {
+    throw new Error("A tribute cannot betray an alliance that doesn't exist");
+  }
+}
+
+function resolveProposeAlliance(
+  ctx: Ctx,
+  tribute: Tribute,
+  targetTributeId: TributeId,
+) {
+  const { copiedGameState, emitEvent } = ctx;
+
+  const targetTribute = copiedGameState.tributes.find(
+    (t) => t.tributeId === targetTributeId,
+  );
+
+  if (targetTribute === undefined) {
+    throw new Error(
+      `targetTribute ${targetTributeId} does not exist, so tribute ${tribute.tributeId} cannot propose an alliance`,
+    );
+  }
+
+  const proposalId = proposalIdFor(
+    copiedGameState.round,
+    tribute.tributeId,
+    targetTributeId,
+  );
+
+  if (
+    copiedGameState.alliances.some((a) => a.memberIds.includes(targetTributeId))
+  ) {
+    emitEvent({
+      type: "AllianceProposalFailed",
+      proposerId: tribute.tributeId,
+      targetId: targetTributeId,
+      location: tribute.position,
+      proposalId: proposalId,
+      reason: "targetAllied",
+    });
+  }
+
+  if (tribute.position !== targetTribute.position) {
+    emitEvent({
+      type: "AllianceProposalFailed",
+      proposerId: tribute.tributeId,
+      targetId: targetTributeId,
+      proposalId: proposalId,
+      reason: "targetGone",
+      location: tribute.position,
+    });
+    return;
+  }
+
+  const mutualProposal = copiedGameState.pendingProposals.find(
+    (p) =>
+      p.round === copiedGameState.round &&
+      p.proposerId === targetTributeId &&
+      p.targetId === tribute.tributeId,
+  );
+
+  if (mutualProposal !== undefined) {
+    const allianceId = allianceIdFor(
+      copiedGameState.round,
+      mutualProposal.proposerId,
+      mutualProposal.targetId,
+    );
+    emitEvent({
+      type: "AllianceFormed",
+      memberIds: [mutualProposal.proposerId, mutualProposal.targetId],
+      allianceId: allianceId,
+      location: targetTribute.position,
+    });
+    copiedGameState.alliances.push({
+      allianceId: allianceId,
+      memberIds: [mutualProposal.proposerId, mutualProposal.targetId],
+    });
+    copiedGameState.pendingProposals = copiedGameState.pendingProposals.filter(
+      (p) => p.proposalId !== mutualProposal.proposalId,
+    );
+    return;
+  }
+
+  copiedGameState.pendingProposals.push({
+    proposalId: proposalId,
+    proposerId: tribute.tributeId,
+    targetId: targetTributeId,
+    round: copiedGameState.round,
+  });
+
+  emitEvent({
+    type: "AllianceProposed",
+    proposerId: tribute.tributeId,
+    targetId: targetTributeId,
+    proposalId: proposalId,
     location: tribute.position,
   });
 }
@@ -565,11 +777,13 @@ export function hitChance(
   attacker: Tribute,
   victim: Tribute,
   weaponDefinition: WeaponDefinition,
+  bonus = 0,
 ): number {
   const hitChance =
     BASE_HIT_RATE +
     attacker.stats[weaponDefinition.scalesWith] * WEAPON_HIT_RATE_BONUS -
-    victim.stats.agility * AGILITY_DODGE_BONUS;
+    victim.stats.agility * AGILITY_DODGE_BONUS +
+    bonus;
 
   if (hitChance < MIN_HIT_CHANCE) {
     return MIN_HIT_CHANCE;
@@ -601,3 +815,157 @@ export function damage(
 
   return damage;
 }
+
+export function allianceIdFor(
+  round: number,
+  proposerId: TributeId,
+  targetId: TributeId,
+) {
+  return `a-${round}-${proposerId}-${targetId}`;
+}
+
+export function proposalIdFor(
+  round: number,
+  proposerId: TributeId,
+  targetId: TributeId,
+) {
+  return `p-${round}-${proposerId}-${targetId}`;
+}
+
+function resolveAttack(
+  ctx: Ctx,
+  attacker: Tribute,
+  target: Tribute,
+  { hitBonus = 0, pinOnHit = false },
+) {
+  const { emitEvent, rng, pinned } = ctx;
+
+  function emitAttack(
+    outcome: TributeAttacked["outcome"],
+    weaponDefinitionId: TributeAttacked["weaponDefinitionId"],
+  ) {
+    emitEvent({
+      type: "TributeAttacked",
+      attackerId: attacker.tributeId,
+      victimId: target.tributeId,
+      outcome,
+      location: attacker.position,
+      weaponDefinitionId,
+    });
+  }
+
+  if (pinned.has(attacker.tributeId)) {
+    emitAttack("pinnedDown", null);
+    return;
+  }
+
+  if (target.hiding === true) {
+    const spotted =
+      target.stats.stealth * HIDING_BONUS + rng.int(1, SPOTTING_DIE) <=
+      attacker.stats.intelligence + rng.int(1, SPOTTING_DIE);
+
+    if (!spotted) {
+      emitAttack("notFound", null);
+      return;
+    }
+  }
+
+  const { instance: weaponInstance, definition: weaponDefinition } =
+    chooseWeapon(attacker);
+
+  const hit = rng.chance(
+    hitChance(attacker, target, weaponDefinition, hitBonus),
+  );
+
+  emitAttack(hit ? "hit" : "missed", weaponDefinition.weaponDefinitionId);
+
+  if (weaponInstance && weaponInstance.ammunition !== null) {
+    weaponInstance.ammunition--;
+
+    emitEvent({
+      type: "TributeAmmunitionChanged",
+      tributeId: attacker.tributeId,
+      itemId: weaponInstance.itemId,
+      delta: -1,
+      ammunition: weaponInstance.ammunition,
+      location: attacker.position,
+    });
+  }
+
+  if (hit) {
+    const damageDone = damage(attacker, target, weaponDefinition);
+
+    const newHealth = Math.max(0, target.hp - damageDone);
+    const delta = newHealth - target.hp;
+    target.hp = newHealth;
+
+    emitEvent({
+      type: "TributeHealthChanged",
+      tributeId: target.tributeId,
+      delta: delta,
+      hp: newHealth,
+      location: target.position,
+    });
+
+    if (target.hp === 0) {
+      target.alive = false;
+      target.diedInRound = ctx.copiedGameState.round;
+      attacker.kills++;
+
+      emitEvent({
+        type: "TributeDied",
+        victimId: target.tributeId,
+        cause: {
+          kind: "attack",
+          killerId: attacker.tributeId,
+        },
+        location: target.position,
+      });
+
+      const victimWeapons = target.inventory.filter((i) => i.kind === "weapon");
+
+      attacker.inventory = [...attacker.inventory, ...victimWeapons];
+      target.inventory = [];
+
+      for (const weapon of victimWeapons) {
+        emitEvent({
+          type: "TributeGainedItem",
+          tributeId: attacker.tributeId,
+          item: weapon,
+          location: attacker.position,
+        });
+      }
+    }
+    if (weaponDefinition.ranged || pinOnHit) {
+      pinned.add(target.tributeId);
+    }
+  }
+}
+
+export function surpriseBonus(charisma: number) {
+  return Math.min(
+    0,
+    SURPRISE_HIT_BONUS - charisma * CHARISMA_BETRAYAL_FORESIGHT,
+  );
+}
+
+const failProposal = (
+  ctx: Ctx,
+  proposal: PendingProposal,
+  reason: AllianceProposalFailed["reason"],
+  location: ZoneId,
+) => {
+  const { emitEvent, copiedGameState } = ctx;
+
+  emitEvent({
+    type: "AllianceProposalFailed",
+    proposalId: proposal.proposalId,
+    proposerId: proposal.proposerId,
+    targetId: proposal.targetId,
+    reason,
+    location: location,
+  });
+  copiedGameState.pendingProposals = copiedGameState.pendingProposals.filter(
+    (p) => p.proposalId !== proposal.proposalId,
+  );
+};

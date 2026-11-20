@@ -271,4 +271,24 @@ describe("decide", () => {
       TypeError,
     );
   });
+
+  // Alliances
+
+  test.todo("proposing to a visible tribute who already has an ally -> illegalProposal");
+
+  test.todo("proposing while you already have an ally -> illegalProposal");
+
+  test.todo("proposing to someone who isn't visible -> illegalProposal");
+
+  test.todo("accepting from someone with no offer waiting for you -> illegalAccept");
+
+  test.todo("betraying someone who isn't your ally, or isn't visible -> illegalBetray");
+
+  test.todo("hunting your ally -> illegalHunt");
+
+  test.todo("a valid accept passes through with source 'llm'");
+
+  test.todo("a valid proposal passes through with source 'llm'");
+
+  test.todo("a valid betray passes through with source 'llm'");
 });

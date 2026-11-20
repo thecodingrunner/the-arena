@@ -9,6 +9,7 @@ import type {
   TributeId,
   WitnessedEvent,
   Zone,
+  ZoneId,
 } from "@arena/shared";
 
 // The arena makeConfig uses. Throws (rather than returning undefined) so tests get a narrowed type.
@@ -156,7 +157,31 @@ export function zoneOf(state: GameState, tributeIndex: number): Zone {
 export function ev<E extends WitnessedEvent>(
   e: Omit<E, "matchId" | "seq" | "round" | "v">,
   seq: number = 0,
-  round: number = 1
+  round: number = 1,
 ): E {
   return { matchId: "match-1", seq: seq++, round: round, v: 1, ...e } as E;
+}
+
+// Puts every tribute in one zone, so a test about tributes interacting doesn't depend on
+// where createMatch happened to start them: placeAll(before, "centre")
+export function placeAll(state: GameState, zoneId: ZoneId): void {
+  for (const tribute of state.tributes) tribute.position = zoneId;
+}
+
+// Guarantees the tribute at firstIndex acts before the one at secondIndex, whatever the seed.
+// Initiative is d5 + stealth + intelligence, so 10 + 10 (at least 21) always beats 1 + 1 (at most 7).
+export function giveInitiative(
+  state: GameState,
+  firstIndex: number,
+  secondIndex: number,
+): void {
+  const first = state.tributes[firstIndex];
+  const second = state.tributes[secondIndex];
+  if (!first || !second) {
+    throw new Error(`no tribute at index ${!first ? firstIndex : secondIndex}`);
+  }
+  first.stats.stealth = 10;
+  first.stats.intelligence = 10;
+  second.stats.stealth = 1;
+  second.stats.intelligence = 1;
 }

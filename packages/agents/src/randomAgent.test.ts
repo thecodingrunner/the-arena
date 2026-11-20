@@ -16,9 +16,9 @@ describe("randomAgent", () => {
   test("when hunt is selected, the hunt target is in visibleTributes, and all visibleTributes are selected at least once", () => {
     const perception = makePerception({
       visibleTributes: [
-        { tributeId: "t3", name: "t3", hidLastRound: false },
-        { tributeId: "t5", name: "t5", hidLastRound: false },
-        { tributeId: "t7", name: "t7", hidLastRound: false },
+        { tributeId: "t3", name: "t3", hidLastRound: false, allyId: null },
+        { tributeId: "t5", name: "t5", hidLastRound: false, allyId: null },
+        { tributeId: "t7", name: "t7", hidLastRound: false, allyId: null },
       ],
     });
 

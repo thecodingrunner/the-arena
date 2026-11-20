@@ -100,7 +100,7 @@ describe("fallback", () => {
       { visibleTributes: [] },
       {
         visibleTributes: [
-          { tributeId: "t2", name: "Tribute Two", hidLastRound: false },
+          { tributeId: "t2", name: "Tribute Two", hidLastRound: false, allyId: null },
         ],
       },
     ];

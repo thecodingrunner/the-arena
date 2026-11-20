@@ -602,7 +602,9 @@ describe("witnessed", () => {
       }) as TributeForaged,
     ];
 
-    expect(() => witnessed(before, events, "t1")).toThrow("unknown weaponDefinitionId throw");
+    expect(() => witnessed(before, events, "t1")).toThrow(
+      "unknown weaponDefinitionId throw",
+    );
   });
 
   test("an attack that's outcome is 'notFound' is not included", () => {
@@ -643,8 +645,12 @@ describe("witnessed", () => {
       expect.objectContaining({ type: "TributeForaged", tributeId: "t3" }),
     );
     expect(witnessedT2).toContainEqual(
-      expect.objectContaining({ type: "TributeAttacked", attackerId: "t2", victimId: "t1" }),
-    )
+      expect.objectContaining({
+        type: "TributeAttacked",
+        attackerId: "t2",
+        victimId: "t1",
+      }),
+    );
   });
 
   test("an attack that's outcome is 'targetGone' is not included", () => {
@@ -685,7 +691,17 @@ describe("witnessed", () => {
       expect.objectContaining({ type: "TributeForaged", tributeId: "t3" }),
     );
     expect(witnessedT2).toContainEqual(
-      expect.objectContaining({ type: "TributeAttacked", attackerId: "t2", victimId: "t1" }),
-    )
+      expect.objectContaining({
+        type: "TributeAttacked",
+        attackerId: "t2",
+        victimId: "t1",
+      }),
+    );
   });
+
+  test.todo("an AllianceBetrayed event is public and will show up in memory for all tributes in that zone");
+
+  test.todo("the proposer and the target both see AllianceProposed and AllianceProposalFailed, and a bystander in the same zone doesn't");
+
+  test.todo("an AllianceFormed event is public and will show up in memory for all tributes in that zone");
 });
