@@ -52,7 +52,8 @@ Check this against the log at the end of each week. The **hours** column is the 
 | 2026-11-17 |   1   | 1.0         | Step 9: Claude call design (structured outputs, CallModel, ModelResult) | |
 | 2026-11-18 |   9   | 3.9         | Step 9: decide with gates, Claude adapter, smoke test, parallel runMatch (step 9 code done) | |
 | 2026-11-19 |   4   | 1.4         | Step 9: remember(), system prompt, user message   |       |
+| 2026-11-20 |   10  | 2.0         | Step 9: remember(), system prompt, user message   |       |
 
-**Running total:** 125.5 / 250 hours (to 2026-11-18)
-**With Claude total:** 56.9 hours
+**Running total:** 135.5 / 250 hours (to 2026-11-18)
+**With Claude total:** 58.9 hours
 **Ratio (with Claude / total):** 45%
