@@ -187,12 +187,15 @@ export function describeEvent(
         return "";
       case "targetGone":
         return ` but couldn't find ${label(event.victimId, names, selfId)}`;
+      case "pinnedDown":
+        return ` while pinned down`
       default: {
         const unhandled: never = event.outcome; // compile error if a case is missing
         return unhandled;
       }
     }
   }
+
 
   function proposalFailedReason(event: AllianceProposalFailed) {
     switch (event.reason) {

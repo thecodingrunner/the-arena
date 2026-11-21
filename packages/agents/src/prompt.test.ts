@@ -493,6 +493,17 @@ describe("prompt", () => {
       }) as AllianceBetrayed,
       expected: "Mara (t2) attempted to betray you but couldn't find you.",
     },
+        {
+      event: ev({
+        type: "AllianceBetrayed",
+        betrayerId: "t2",
+        victimId: "t1",
+        allianceId: "a1",
+        outcome: "pinnedDown",
+        location: "centre",
+      }) as AllianceBetrayed,
+      expected: "Mara (t2) attempted to betray you while pinned down.",
+    },
     {
       event: ev({
         type: "AllianceFormed",

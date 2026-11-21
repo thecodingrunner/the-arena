@@ -259,7 +259,7 @@ export type AllianceBetrayed = EventBase & {
   betrayerId: TributeId;
   victimId: TributeId;
   allianceId: string;
-  outcome: "success" | "targetGone"
+  outcome: "success" | "targetGone" | "pinnedDown"
 };
 
 export type AllianceProposed = EventBase & {

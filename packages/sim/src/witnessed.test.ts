@@ -5,9 +5,13 @@
 
 import { beforeEach, describe, expect, test } from "vitest";
 import { createMatch } from "./createMatch";
-import { ev, makeConfig } from "./testFixtures";
+import { ev, makeConfig, placeAll } from "./testFixtures";
 import { witnessed } from "./witnessed";
 import type {
+  AllianceBetrayed,
+  AllianceFormed,
+  AllianceProposalFailed,
+  AllianceProposed,
   GameEvent,
   SponsorGiftDelivered,
   TributeAmmunitionChanged,
@@ -699,9 +703,302 @@ describe("witnessed", () => {
     );
   });
 
-  test.todo("an AllianceBetrayed event is public and will show up in memory for all tributes in that zone");
+  // Alliances
 
-  test.todo("the proposer and the target both see AllianceProposed and AllianceProposalFailed, and a bystander in the same zone doesn't");
+  test("AllianceBetrayed and AllianceFormed events are public and will show up in memory for all tributes in that zone", () => {
+    const before = createMatch(makeConfig());
 
-  test.todo("an AllianceFormed event is public and will show up in memory for all tributes in that zone");
+    const events: GameEvent[] = [
+      ev({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        outcome: "success",
+        location: "centre",
+      }) as AllianceBetrayed,
+      ev({
+        type: "AllianceFormed",
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+        location: "centre",
+      }) as AllianceFormed,
+    ];
+
+    placeAll(before, "centre");
+
+    const witnessedT1 = witnessed(before, events, "t1");
+    const witnessedT2 = witnessed(before, events, "t2");
+    const witnessedT3 = witnessed(before, events, "t3");
+
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        outcome: "success",
+        location: "centre",
+      }),
+    );
+    expect(witnessedT2).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        outcome: "success",
+        location: "centre",
+      }),
+    );
+    expect(witnessedT3).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        outcome: "success",
+        location: "centre",
+      }),
+    );
+
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+        location: "centre",
+      }),
+    );
+    expect(witnessedT2).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+        location: "centre",
+      }),
+    );
+    expect(witnessedT3).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+        location: "centre",
+      }),
+    );
+  });
+
+  test("the proposer and the target both see AllianceProposed and AllianceProposalFailed, and a bystander in the same zone doesn't", () => {
+    const before = createMatch(makeConfig());
+
+    const events: GameEvent[] = [
+      ev({
+        type: "AllianceProposed",
+        proposerId: "t1",
+        targetId: "t2",
+        proposalId: "p1",
+        location: "centre",
+      }) as AllianceProposed,
+      ev({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        proposalId: "p1",
+        reason: "ignored",
+        location: "centre",
+      }) as AllianceProposalFailed,
+    ];
+
+    placeAll(before, "centre");
+
+    const witnessedT1 = witnessed(before, events, "t1");
+    const witnessedT2 = witnessed(before, events, "t2");
+    const witnessedT3 = witnessed(before, events, "t3");
+
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposed",
+        proposerId: "t1",
+        targetId: "t2",
+        proposalId: "p1",
+        location: "centre",
+      }),
+    );
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        proposalId: "p1",
+        reason: "ignored",
+        location: "centre",
+      }),
+    );
+    expect(witnessedT2).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposed",
+        proposerId: "t1",
+        targetId: "t2",
+        proposalId: "p1",
+        location: "centre",
+      }),
+    );
+    expect(witnessedT2).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        proposalId: "p1",
+        reason: "ignored",
+        location: "centre",
+      }),
+    );
+    expect(witnessedT3).not.toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposed",
+        proposerId: "t1",
+        targetId: "t2",
+        proposalId: "p1",
+        location: "centre",
+      }),
+    );
+    expect(witnessedT3).not.toContainEqual(
+      expect.objectContaining({
+        type: "AllianceProposalFailed",
+        proposerId: "t1",
+        targetId: "t2",
+        proposalId: "p1",
+        reason: "ignored",
+        location: "centre",
+      }),
+    );
+  });
+
+  test("an AllianceBetrayed doesn't register for the victim if it was noy successful ('targetGone' etc.)", () => {
+    const before = createMatch(makeConfig());
+
+    const events: GameEvent[] = [
+      ev({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        location: "centre",
+        outcome: "targetGone",
+      }) as AllianceBetrayed,
+    ];
+
+    placeAll(before, "centre");
+    before.tributes[1]!.position = "forest";
+
+    const witnessedT1 = witnessed(before, events, "t1");
+    const witnessedT2 = witnessed(before, events, "t2");
+
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        location: "centre",
+        outcome: "targetGone",
+      }),
+    );
+
+    expect(witnessedT2).not.toContainEqual(
+      expect.objectContaining({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        location: "centre",
+        outcome: "targetGone",
+      }),
+    );
+  });
+
+  test("a tribute in a different does not see AllianceBetrayed or AllianceFormed", () => {
+    const before = createMatch(makeConfig());
+
+    const events: GameEvent[] = [
+      ev({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        outcome: "success",
+        location: "centre",
+      }) as AllianceBetrayed,
+      ev({
+        type: "AllianceFormed",
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+        location: "centre",
+      }) as AllianceFormed,
+    ];
+
+    placeAll(before, "centre");
+
+    before.tributes[2]!.position = "forest"
+
+    const witnessedT1 = witnessed(before, events, "t1");
+    const witnessedT2 = witnessed(before, events, "t2");
+    const witnessedT3 = witnessed(before, events, "t3");
+
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        outcome: "success",
+        location: "centre",
+      }),
+    );
+    expect(witnessedT2).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        outcome: "success",
+        location: "centre",
+      }),
+    );
+    expect(witnessedT3).not.toContainEqual(
+      expect.objectContaining({
+        type: "AllianceBetrayed",
+        betrayerId: "t1",
+        victimId: "t2",
+        allianceId: "a1",
+        outcome: "success",
+        location: "centre",
+      }),
+    );
+
+    expect(witnessedT1).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+        location: "centre",
+      }),
+    );
+    expect(witnessedT2).toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+        location: "centre",
+      }),
+    );
+    expect(witnessedT3).not.toContainEqual(
+      expect.objectContaining({
+        type: "AllianceFormed",
+        allianceId: "a1",
+        memberIds: ["t1", "t2"],
+        location: "centre",
+      }),
+    );
+  });
 });

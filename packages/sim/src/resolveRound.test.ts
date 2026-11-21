@@ -3212,7 +3212,59 @@ describe("resolveRound", () => {
     expect(kills).toBeGreaterThan(0);
   });
 
-  test.todo(
-    "if the betrayer was pinned down earlier that round -> AllianceBetrayed fails with 'pinnedDown'",
-  );
+  test("if the betrayer was pinned down earlier that round -> AllianceBetrayed fails with 'pinnedDown'", () => {
+    const actions: RoundActions = {
+      t1: { type: "hunt", targetId: "t2" },
+      t2: { type: "betray", allyId: "t3" },
+      t3: { type: "rest" },
+    };
+
+    let attacksHit = 0;
+
+    for (let seed = 0; seed < 100; seed++) {
+      const before = createMatch(makeConfig({ seed }));
+
+      giveInitiative(before, 0, 1);
+      placeAll(before, "centre");
+      before.tributes[0]!.inventory = [
+        {
+          kind: "weapon",
+          itemId: "bow-1",
+          definitionId: "bow",
+          ammunition: 5,
+        },
+      ];
+      before.alliances = [
+        {
+          allianceId: "a1",
+          memberIds: ["t2", "t3"],
+        },
+      ];
+
+      const { events } = resolveRound(before, actions);
+
+      const attack = findEvent(
+        events,
+        "TributeAttacked",
+        (e) =>
+          e.attackerId === "t1" &&
+          e.outcome === "hit" &&
+          e.weaponDefinitionId === "bow",
+      );
+
+      if (attack !== undefined) {
+        attacksHit++;
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            type: "AllianceBetrayed",
+            betrayerId: "t2",
+            victimId: "t3",
+            outcome: "pinnedDown",
+          }),
+        );
+      }
+    }
+
+    expect(attacksHit).toBeGreaterThan(0);
+  });
 });

@@ -25,6 +25,7 @@ The design for alliances: how they form, how they end, and what each package has
 | Two betrayals in one round | Both resolve as attacks with the surprise bonus. The second resolves after the alliance has already ended (**open:** does it still emit `AllianceBetrayed`, or only the attack events?) |
 | No peaceful exit | An alliance only ends by betrayal or death |
 | Death ends it | When a member dies (from anything), the alliance is removed from `GameState.alliances` (**open:** emit an event, or is `TributeDied` enough?) |
+| A pinned betrayer | the betrayal fails, and the alliance survives |
 
 ## Events
 

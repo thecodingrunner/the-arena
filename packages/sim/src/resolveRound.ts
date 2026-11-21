@@ -573,7 +573,7 @@ function resolveAcceptAlliance(
 }
 
 function resolveBetray(ctx: Ctx, tribute: Tribute, allyTributeId: TributeId) {
-  const { copiedGameState, emitEvent, alliancesAtStart } = ctx;
+  const { copiedGameState, emitEvent, alliancesAtStart, pinned } = ctx;
 
   const allyTribute = copiedGameState.tributes.find(
     (t) => t.tributeId === allyTributeId,
@@ -592,6 +592,18 @@ function resolveBetray(ctx: Ctx, tribute: Tribute, allyTributeId: TributeId) {
   );
 
   if (alliance) {
+    if (pinned.has(tribute.tributeId)) {
+      emitEvent({
+        type: "AllianceBetrayed",
+        betrayerId: tribute.tributeId,
+        victimId: allyTributeId,
+        allianceId: alliance.allianceId,
+        outcome: "pinnedDown",
+        location: tribute.position,
+      });
+      return;
+    }
+
     if (allyTribute.position !== tribute.position) {
       emitEvent({
         type: "AllianceBetrayed",
@@ -943,7 +955,7 @@ function resolveAttack(
 }
 
 export function surpriseBonus(charisma: number) {
-  return Math.min(
+  return Math.max(
     0,
     SURPRISE_HIT_BONUS - charisma * CHARISMA_BETRAYAL_FORESIGHT,
   );

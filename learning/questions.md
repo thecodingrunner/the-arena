@@ -48,4 +48,4 @@ Keep unresolved questions concise. Add a date or context when it helps.
 
 ## 2026-11-18: why did the cache read of 1808 versus a prompt of 992 tokens? and could we write a cold-cache experiment to explain it?
 
-
+## 2026-11-21: remember replays the whole log every round, which is O(rounds²) per match. Make witnessed incremental if a server round ever gets slow

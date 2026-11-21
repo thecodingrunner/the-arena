@@ -25,6 +25,7 @@ const publicEvents: GameEvent["type"][] = [
   "ZoneFoodChanged",
   "ZoneFlooded",
   "ZoneClosed",
+  "AllianceFormed"
 ];
 
 export function witnessed(
@@ -69,7 +70,7 @@ export function witnessed(
         continue;
       }
     }
-
+    
     witnessedEvents.push(e);
   }
 
@@ -95,7 +96,7 @@ function isOwn(e: GameEvent, tributeId: TributeId): boolean {
     case "SponsorGiftDelivered":
       return e.to === tributeId;
     case "AllianceBetrayed":
-      return e.betrayerId === tributeId || e.victimId === tributeId;
+      return e.betrayerId === tributeId || (e.victimId === tributeId && e.outcome === "success");
     case "AllianceProposed":
     case "AllianceProposalFailed":
       return e.proposerId === tributeId || e.targetId === tributeId;
